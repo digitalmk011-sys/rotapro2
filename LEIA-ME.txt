@@ -1,9 +1,13 @@
-ROTAPRO 0.2 - IMPORTAÇÃO EXCEL
+ROTAPRO 0.3 — FORMATO DE EXCEL DE ENTREGAS
 
-Substitua os arquivos da versão anterior no GitHub:
-index.html, style.css, app.js, manifest.json e sw.js.
+Compatível com planilhas como:
+AT ID | Sequence | Stop | SPX TN | Destination Address | Bairro | City | Zipcode/Postal code | Latitude | Longitude
 
-A versão 0.2 aceita .xlsx, .xls e .csv.
-O botão Modelo Excel baixa uma planilha pronta.
+O RotaPro usa:
+- SPX TN como código da encomenda
+- Destination Address + Bairro + City + CEP como endereço
+- Latitude/Longitude para abrir diretamente o ponto no Google Maps
+- Sequence/Stop como informação da parada
 
-IMPORTANTE: a leitura de XLSX usa uma biblioteca carregada pela internet. Por isso, para importar Excel, o celular precisa estar conectado à internet.
+Você pode substituir os arquivos da versão anterior no GitHub.
+Não é necessário criar outro repositório.
