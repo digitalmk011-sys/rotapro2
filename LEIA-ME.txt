@@ -1,0 +1,9 @@
+ROTAPRO 0.2 - IMPORTAÇÃO EXCEL
+
+Substitua os arquivos da versão anterior no GitHub:
+index.html, style.css, app.js, manifest.json e sw.js.
+
+A versão 0.2 aceita .xlsx, .xls e .csv.
+O botão Modelo Excel baixa uma planilha pronta.
+
+IMPORTANTE: a leitura de XLSX usa uma biblioteca carregada pela internet. Por isso, para importar Excel, o celular precisa estar conectado à internet.
