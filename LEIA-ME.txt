@@ -1,13 +1,10 @@
-ROTAPRO 0.3 — FORMATO DE EXCEL DE ENTREGAS
+ROTAPRO 0.4 — CORREÇÃO IMPORTAÇÃO EXCEL
 
-Compatível com planilhas como:
+Corrigido para o formato real:
 AT ID | Sequence | Stop | SPX TN | Destination Address | Bairro | City | Zipcode/Postal code | Latitude | Longitude
 
-O RotaPro usa:
-- SPX TN como código da encomenda
-- Destination Address + Bairro + City + CEP como endereço
-- Latitude/Longitude para abrir diretamente o ponto no Google Maps
-- Sequence/Stop como informação da parada
+IMPORTANTE:
+Substitua TODOS os arquivos antigos no GitHub, especialmente app.js e sw.js.
+Depois de publicar, feche/reabra o RotaPro ou recarregue a página. O service worker agora usa a versão rotapro-v4 e remove o cache antigo.
 
-Você pode substituir os arquivos da versão anterior no GitHub.
 Não é necessário criar outro repositório.
