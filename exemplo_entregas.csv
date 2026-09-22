@@ -1,4 +1,4 @@
-Cliente;Endereço;Telefone;Observação
-João;Rua das Flores, 100, Maringá - PR;44999999999;Casa azul
-Maria;Av. Brasil, 250, Maringá - PR;44988888888;Portaria
-Carlos;Rua Paraná, 500, Maringá - PR;44977777777;Ligar antes
+AT ID;Sequence;Stop;SPX TN;Destination Address;Bairro;City;Zipcode/Postal code;Latitude;Longitude
+AT001;1;1;SPX001;Rua das Flores, 100;Centro;Maringá;87000-000;-23.4205;-51.9333
+AT002;2;2;SPX002;Avenida Brasil, 250;Zona 01;Maringá;87013-000;-23.4250;-51.9370
+AT003;3;3;SPX003;Rua Paraná, 500;Vila Operária;Maringá;87020-000;-23.4100;-51.9300

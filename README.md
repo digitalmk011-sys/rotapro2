@@ -1,27 +1,30 @@
-# RotaPro MVP 0.7
+# RotaPro MVP 0.8
 
-## Importação CSV aprimorada
-A versão 0.7 corrige a importação de listas e aceita arquivos CSV exportados pelo Excel brasileiro.
+Versão focada na importação direta de listas de logística.
 
-Recursos:
-- seleção de arquivo com qualquer extensão/MIME pelo seletor Android;
-- separador automático: `;`, `,`, TAB ou `|`;
-- UTF-8 com BOM e fallback Windows-1252;
-- campos entre aspas e vírgulas/; dentro do endereço;
-- reconhecimento automático de colunas por nome;
-- aceita `Cliente`, `Nome`, `Destinatário`, `Endereço`, `Rua`, `Logradouro`, `Telefone`, `Celular`, `Observação`, `Complemento` etc.;
-- prévia antes de importar;
-- avisos por linha com endereço vazio;
-- linhas vazias ignoradas.
+## Formato suportado
 
-Exemplo recomendado para Excel:
+O RotaPro reconhece diretamente colunas como:
 
-```csv
-Cliente;Endereço;Telefone;Observação
-João;Rua das Flores, 100;44999999999;Casa azul
-Maria;Av. Brasil, 250;44988888888;Portaria
-Carlos;Rua Paraná, 500;44977777777;Ligar antes
-```
+- `AT ID` → identificação da entrega
+- `Sequence` → sequência original
+- `Stop` → número da parada
+- `SPX TN` → código de transporte
+- `Destination Address` → endereço
+- `Bairro` → bairro
+- `City` → cidade
+- `Zipcode/Postal code` → CEP
+- `Latitude` → latitude
+- `Longitude` → longitude
 
-## Gerar APK
-Abra o diretório `RotaPro` no Android Studio, sincronize o Gradle e use `Build > Build APK(s)`.
+Também mantém compatibilidade com colunas genéricas como Cliente, Endereço, Telefone e Observação.
+
+## Importação
+
+O importador aceita CSV separado por `;`, `,`, TAB ou `|`, com UTF-8 ou Windows-1252.
+
+Quando Latitude e Longitude existem na planilha, o aplicativo usa essas coordenadas diretamente e evita geocodificação desnecessária.
+
+## Exemplo
+
+Use `exemplo_entregas.csv` incluído neste projeto.
