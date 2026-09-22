@@ -1,0 +1,5 @@
+RotaPro PWA 0.1
+
+Para instalar como aplicativo no Android, a aplicação precisa estar em um endereço HTTPS. Depois abra o endereço no Chrome e use “Instalar aplicativo” ou “Adicionar à tela inicial”.
+
+O pacote inclui cadastro de entregas, importação CSV, status e abertura da navegação.
