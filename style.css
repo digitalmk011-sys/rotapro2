@@ -240,3 +240,16 @@ header .headerGlow, header .headerInner{display:none!important}
 @media(max-width:620px){
   header{height:96px!important;background-size:cover!important;background-position:center center!important}
 }
+/* RotaPro 2.0 - painel do mapa compacto */
+.mapModal.detail-open #map{bottom:185px}
+.mapBottom{max-height:30vh;padding:8px 10px 12px}
+.deliveryDetails{padding:0;margin:0;border:0;background:transparent;box-shadow:none}
+.compactDetail{position:relative;background:#fff;border:1px solid #d7e5f3;border-radius:16px;padding:10px 12px 12px;box-shadow:0 5px 18px rgba(20,60,110,.10)}
+.compactInfo{display:flex;align-items:center;gap:10px;min-height:30px}
+.compactLabel{font-size:9px;font-weight:900;color:#6b7f96;letter-spacing:.55px;min-width:82px}
+.compactSeq{font-size:17px;color:#08376b;word-break:break-word}
+.addressCompact{align-items:flex-start;margin-top:4px;padding-right:34px}
+.compactAddress{font-size:14px;line-height:1.3;font-weight:800;color:#102f50}
+.compactDetail .detailClose{position:absolute;right:8px;top:8px;width:28px;min-height:28px;height:28px;font-size:18px;padding:0}
+.compactConfirm{width:100%;min-height:42px!important;margin-top:8px;border-radius:11px!important;font-size:12px!important}
+@media(max-width:620px){.mapModal.detail-open #map{bottom:175px}.mapBottom{max-height:28vh;padding:7px 9px 10px}.compactDetail{padding:9px 10px 10px}.compactSeq{font-size:16px}.compactAddress{font-size:13px}.compactLabel{min-width:76px;font-size:8px}.compactConfirm{min-height:40px!important;margin-top:7px}}

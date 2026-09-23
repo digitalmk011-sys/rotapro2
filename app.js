@@ -1,5 +1,5 @@
 let deliveries=JSON.parse(localStorage.getItem("rotapro_deliveries")||"[]");
-let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,selectedDelivery=null,showDone=false,sortMode="route",watchId=null,followUser=true,lastGpsRouteUpdate=0;
+let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,selectedDelivery=null,selectedGroup=[],showDone=false,sortMode="route",watchId=null,followUser=true,lastGpsRouteUpdate=0;
 const OSRM="https://router.project-osrm.org";
 
 // Migração das versões anteriores: Sequence passa a ser o identificador principal.
@@ -51,48 +51,89 @@ function clearMapLayers(){markers.forEach(m=>map.removeLayer(m));markers=[];if(r
 function updateUserMarker(){if(!map||!currentPosition)return;if(userMarker)map.removeLayer(userMarker);let icon=L.divIcon({className:"",html:`<div class="user-location"><span></span></div>`,iconSize:[34,34],iconAnchor:[17,17]});userMarker=L.marker(currentPosition,{icon,zIndexOffset:1000}).addTo(map).bindPopup("📍 Minha posição em tempo real");if(followUser)map.setView(currentPosition,Math.max(map.getZoom(),15),{animate:true});document.getElementById("gpsStatus").textContent="GPS ativo • posição atualizada"}
 function startLocationWatch(){if(!navigator.geolocation){document.getElementById("gpsStatus").textContent="GPS não disponível";return}if(watchId!==null)return;watchId=navigator.geolocation.watchPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];updateUserMarker();if(map&&document.getElementById("mapModal").classList.contains("open")&&Date.now()-lastGpsRouteUpdate>10000){lastGpsRouteUpdate=Date.now();drawMap(false)}},()=>{document.getElementById("gpsStatus").textContent="GPS indisponível";toast("Não foi possível acompanhar sua posição. Autorize o GPS.")},{enableHighAccuracy:true,maximumAge:2000,timeout:15000})}
 function stopLocationWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}}
+function addressKey(d){return String(d?.destinationAddress||d?.address||"").trim().replace(/\s+/g," ").toLowerCase()}
+function groupIndexesByAddress(i){const key=addressKey(deliveries[i]);if(!key)return [i];return deliveries.map((d,idx)=>addressKey(d)===key?idx:-1).filter(idx=>idx>=0)}
 function showDeliveryDetails(i){
  selectedDelivery=i;
  if(i===null||!deliveries[i]||deliveries[i].done){
+   selectedGroup=[];
    document.getElementById("deliveryDetails").classList.remove("show");
    document.getElementById("deliveryDetails").innerHTML="";
    document.getElementById("mapModal").classList.remove("detail-open");
    if(map)drawMap(false);
    return;
  }
+ const group=groupIndexesByAddress(i).filter(idx=>!deliveries[idx].done);
+ selectedGroup=group.length?group:[i];
  const d=deliveries[i];
  const dest=d.destinationAddress||d.address||"Endereço não informado";
- const bairro=d.bairro||""; const city=d.city||""; const zip=d.zip||"";
- const extra=[bairro,city,zip].filter(Boolean).join(" • ");
+ const seqs=selectedGroup.map(idx=>cleanSequence(deliveries[idx].sequence)||"?").join(" - ");
  document.getElementById("deliveryDetails").innerHTML=`
- <div class="detailTop">
-   <div><span class="detailStatus">PENDENTE</span><h3>SEQ ${esc(cleanSequence(d.sequence)||"?")}</h3><b>${esc(d.code||d.client||"Entrega")}</b></div>
+ <div class="compactDetail">
    <button class="detailClose" onclick="showDeliveryDetails(null)">×</button>
- </div>
- <div class="destinationCard">
-   <span class="addressLabel">DESTINATION ADDRESS • ENDEREÇO DE ENTREGA</span>
-   <div class="destinationText">📍 ${esc(dest)}</div>
-   ${extra?`<div class="destinationExtra">${esc(extra)}</div>`:""}
-   <button class="copyAddress" title="Copiar endereço" onclick="copyAddress(${i})">📋 Copiar endereço</button>
- </div>
- <div class="detailGrid">
-   <div><small>Sequence</small><b>${esc(cleanSequence(d.sequence)||"SEM NÚMERO")}</b></div>
-   <div><small>Rota</small><b>${esc(d.routeOrder||"-")}</b></div>
- </div>
- <div class="detailActions">
-   <button class="secondary" onclick="navigate(${i})">🧭 Navegar</button>
-   <button class="success confirmBig" onclick="toggle(${i})">✅ CONFIRMAR ENTREGA</button>
-   <button class="primary" onclick="editSequence(${i})">✏️ Corrigir Sequence</button>
-   <button class="secondary" onclick="selectNext(${i})">👉 Definir como próxima</button>
+   <div class="compactInfo">
+     <span class="compactLabel">SEQUENCE</span>
+     <b class="compactSeq">${esc(seqs)}</b>
+   </div>
+   <div class="compactInfo addressCompact">
+     <span class="compactLabel">DESTINATION ADDRESS</span>
+     <div class="compactAddress">📍 ${esc(dest)}</div>
+   </div>
+   <button class="success confirmBig compactConfirm" onclick="confirmAddressGroup()">✅ CONFIRMAR ENTREGA</button>
  </div>`;
  document.getElementById("deliveryDetails").classList.add("show");
  document.getElementById("mapModal").classList.add("detail-open");
 }
-
+function confirmAddressGroup(){
+ const group=(selectedGroup||[]).filter(i=>deliveries[i]&&!deliveries[i].done);
+ if(!group.length)return;
+ group.forEach(i=>deliveries[i].done=true);
+ const seqs=group.map(i=>cleanSequence(deliveries[i].sequence)||"?").join(" - ");
+ manualNext=null;selectedDelivery=null;selectedGroup=[];save();
+ if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}
+ toast(`Entrega confirmada • SEQUENCE ${seqs}`);
+}
 function copyAddress(i){let a=deliveries[i]?.destinationAddress||deliveries[i]?.address||"";if(!a)return; if(navigator.clipboard){navigator.clipboard.writeText(a).then(()=>toast("Endereço copiado"),()=>toast("Não foi possível copiar o endereço"));}else{let ta=document.createElement("textarea");ta.value=a;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("Endereço copiado")}}
 function getBairro(address){let p=String(address||"").split(",");return p.length>=3?p[p.length-3]||"-":"-"}
 function getCidade(address){let p=String(address||"").split(",");return p.length>=2?p[p.length-2]||"-":"-"}
-function drawMap(fit=true){if(!map)return;clearMapLayers();let points=[];deliveries.forEach((d,i)=>{let c=coords(d);if(!c||(!showDone&&d.done))return;points.push(c);let cls=d.done?"done":(selectedDelivery===i?"selected":(manualNext===i?"next":"pending"));let label=cleanSequence(d.sequence)||"?";let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${d.done?"✓":esc(label)}</div>`,iconSize:[40,40],iconAnchor:[20,20]});let m=L.marker(c,{icon}).addTo(map);m.on("click",()=>{if(d.done)return;showDeliveryDetails(i);map.setView(c,Math.max(map.getZoom(),15),{animate:true})});markers.push(m)});if(currentPosition)updateUserMarker();if(points.length&&fit&&!currentPosition){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}let ord=deliveries.filter(d=>!d.done&&coords(d));ord.sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));let line=ord.map(coords);if(manualNext!==null&&!deliveries[manualNext]?.done){let md=deliveries[manualNext],mc=coords(md);if(mc){line=[mc,...line.filter(c=>c[0]!==mc[0]||c[1]!==mc[1])]}}if(currentPosition)line=[currentPosition,...line];if(line.length>1)drawRoadRoute(line);document.getElementById("mapPending").textContent=pending().length;document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length}
+function drawMap(fit=true){
+ if(!map)return;
+ clearMapLayers();
+ let points=[];
+ const groups=new Map();
+ deliveries.forEach((d,i)=>{
+   let c=coords(d);if(!c||(!showDone&&d.done))return;
+   const key=addressKey(d)||`__${i}`;
+   if(!groups.has(key))groups.set(key,{indexes:[],coord:c});
+   groups.get(key).indexes.push(i);
+ });
+ groups.forEach(g=>{
+   const pendingIdx=g.indexes.filter(i=>!deliveries[i].done);
+   const activeIdx=pendingIdx.length?pendingIdx:g.indexes;
+   if(!showDone&&pendingIdx.length===0)return;
+   const first=activeIdx[0]; const c=g.coord; points.push(c);
+   const isSelected=g.indexes.includes(selectedDelivery);
+   const isNext=g.indexes.includes(manualNext);
+   const allDone=pendingIdx.length===0;
+   const cls=allDone?"done":(isSelected?"selected":(isNext?"next":"pending"));
+   const labels=activeIdx.map(i=>cleanSequence(deliveries[i].sequence)||"?");
+   const label=labels.length>1?labels[0]+"+":labels[0];
+   let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${allDone?"✓":esc(label)}</div>`,iconSize:[40,40],iconAnchor:[20,20]});
+   let m=L.marker(c,{icon}).addTo(map);
+   m.on("click",()=>{if(allDone)return;showDeliveryDetails(first);map.setView(c,Math.max(map.getZoom(),15),{animate:true})});
+   markers.push(m);
+ });
+ if(currentPosition)updateUserMarker();
+ if(points.length&&fit&&!currentPosition){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}
+ let ord=deliveries.filter(d=>!d.done&&coords(d));
+ ord.sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));
+ let line=ord.map(coords);
+ if(manualNext!==null&&!deliveries[manualNext]?.done){let md=deliveries[manualNext],mc=coords(md);if(mc){line=[mc,...line.filter(c=>c[0]!==mc[0]||c[1]!==mc[1])]}}
+ if(currentPosition)line=[currentPosition,...line];
+ if(line.length>1)drawRoadRoute(line);
+ document.getElementById("mapPending").textContent=pending().length;
+ document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length;
+}
 async function drawRoadRoute(line){try{let chunks=[];for(let i=0;i<line.length;i+=20){let part=line.slice(i,Math.min(i+20,line.length));if(i>0)part.unshift(line[i-1]);if(part.length>1)chunks.push(part)}let all=[];for(const part of chunks){let path=part.map(c=>`${c[1]},${c[0]}`).join(";");let r=await fetch(`${OSRM}/route/v1/driving/${path}?overview=full&geometries=geojson&steps=false`);if(!r.ok)throw new Error("route");let j=await r.json();let geom=j.routes?.[0]?.geometry?.coordinates||[];geom.forEach(x=>all.push([x[1],x[0]]))}if(all.length&&map){routeLine=L.polyline(all,{color:"#0866ff",weight:5,opacity:.9}).addTo(map)}}catch(e){let fallback=line.map(c=>[c[0],c[1]]);if(fallback.length>1)routeLine=L.polyline(fallback,{color:"#0866ff",weight:4,dashArray:"8 7"}).addTo(map)}}
 function optimizeRoute(){const left=pending().filter(d=>coords(d));if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}let start=currentPosition||coords(left[0]),pool=left.slice(),order=1;while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(start,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;start=coords(d)}manualNext=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada — Sequence permanece como identificação")}
 function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}
