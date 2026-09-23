@@ -2,3 +2,5 @@
 
 .multiDelivery{margin-top:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px;color:#9a3412;font-size:12px}.multiOrders{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.multiOrder{background:#fff;border:1px solid #fdba74;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:bold;color:#9a3412}.multiOrder.done{background:#dcfce7;border-color:#86efac;color:#166534}.detailObs{margin-top:8px;background:#fff;border:1px solid #e7edf5;border-radius:9px;padding:8px;font-size:11px;color:#475569}.detailGrid{grid-template-columns:repeat(3,1fr)}.detailGrid div{min-width:0}.detailGrid b{display:block;overflow-wrap:anywhere}
 @media(max-width:520px){.detailGrid{grid-template-columns:1fr 1fr}.detailGrid div:nth-child(9){grid-column:1/-1}}
+
+.offlineNote{margin-top:10px;padding:9px 11px;border-radius:10px;background:#eef6ff;color:#24507a;font-size:12px}.offline{color:#b45309!important}
