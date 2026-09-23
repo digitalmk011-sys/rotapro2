@@ -1,8 +1,8 @@
-ROTAPRO 1.2 — SEQUENCE COMO IDENTIFICADOR PRINCIPAL
+ROTAPRO 1.3 — SEQUENCE COMO IDENTIFICADOR PRINCIPAL
 
 NOVIDADES
 - Sequence passou a ser o número principal da encomenda.
-- Stop não é mais usado para identificar a entrega; permanece apenas como referência original.
+- Stop foi retirado da interface e não é usado para identificar a entrega.
 - Botão "Corrigir Sequence" para preencher/corrigir todas as entregas.
 - "Preencher faltantes" sugere automaticamente números ainda não usados.
 - Bloqueio de Sequences duplicadas ao salvar.
@@ -11,10 +11,10 @@ NOVIDADES
 - Mantidos mapa, GPS em tempo real, seleção manual, confirmação de entrega e otimização.
 
 PLANILHA COMPATÍVEL
-AT ID | Sequence | Stop | SPX TN | Destination Address | Bairro | City | Zipcode/Postal code | Latitude | Longitude
+AT ID | Sequence | SPX TN | Destination Address | Bairro | City | Zipcode/Postal code | Latitude | Longitude
 
 IMPORTANTE
-A Sequence é a referência que acompanha a encomenda. Mesmo que a rota seja otimizada e a ordem das entregas mude, o endereço continua vinculado à sua Sequence.
+A Sequence é a referência que acompanha a encomenda. O endereço completo é mostrado ao tocar no ponto do mapa e fica em destaque para conferência no local. Mesmo que a rota seja otimizada e a ordem das entregas mude, o endereço continua vinculado à sua Sequence.
 
 PARA ATUALIZAR O GITHUB
 1. Extraia este ZIP.

@@ -3,7 +3,15 @@ let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manu
 const OSRM="https://router.project-osrm.org";
 
 // Migração das versões anteriores: Sequence passa a ser o identificador principal.
-deliveries.forEach(d=>{if(d.sequence===undefined||d.sequence===null||d.sequence==="")d.sequence=cleanSequence(d.originalSequence);if(d.originalSequence===undefined)d.originalSequence=d.sequence||"";if(d.originalStop===undefined)d.originalStop="";});
+deliveries.forEach(d=>{
+ if(d.sequence===undefined||d.sequence===null||d.sequence==="")d.sequence=cleanSequence(d.originalSequence);
+ if(d.originalSequence===undefined)d.originalSequence=d.sequence||"";
+ if(d.originalStop===undefined)d.originalStop="";
+ if(d.destinationAddress===undefined||d.destinationAddress===null||d.destinationAddress==="") d.destinationAddress=d.address||"";
+ if(d.bairro===undefined)d.bairro="";
+ if(d.city===undefined)d.city="";
+ if(d.zip===undefined)d.zip="";
+});
 
 function save(){localStorage.setItem("rotapro_deliveries",JSON.stringify(deliveries));render();if(document.getElementById("mapModal")?.classList.contains("open"))drawMap()}
 function val(id){return document.getElementById(id)?.value.trim()||""}
@@ -13,7 +21,7 @@ function sequenceLabel(d,i){return cleanSequence(d.sequence)||"Sem Seq."}
 function missingSequenceCount(){return deliveries.filter(d=>!cleanSequence(d.sequence)).length}
 function duplicateSequences(){let mapSeq=new Map();deliveries.forEach((d,i)=>{let s=cleanSequence(d.sequence);if(s){if(!mapSeq.has(s))mapSeq.set(s,[]);mapSeq.get(s).push(i)}});return new Set([...mapSeq.values()].filter(a=>a.length>1).flat())}
 function sequenceIssue(i){let d=deliveries[i];return !cleanSequence(d.sequence)||duplicateSequences().has(i)}
-function addDelivery(){let client=val("client"),address=val("address"),phone=val("phone");if(!client||!address){alert("Informe cliente e endereço.");return}deliveries.push({client,address,phone,obs:"",code:"",lat:"",lon:"",sequence:"",originalSequence:"",originalStop:"",done:false,routeOrder:""});["client","address","phone"].forEach(id=>document.getElementById(id).value="");save();toast("Entrega adicionada — defina a Sequence");openSequenceEditor()}
+function addDelivery(){let client=val("client"),address=val("address"),phone=val("phone");if(!client||!address){alert("Informe cliente e endereço.");return}deliveries.push({client,address,destinationAddress:address,bairro:"",city:"",zip:"",phone,obs:"",code:"",lat:"",lon:"",sequence:"",originalSequence:"",originalStop:"",done:false,routeOrder:""});["client","address","phone"].forEach(id=>document.getElementById(id).value="");save();toast("Entrega adicionada — defina a Sequence");openSequenceEditor()}
 function coords(d){let lat=parseFloat(String(d.lat).replace(",",".")),lon=parseFloat(String(d.lon).replace(",","."));return Number.isFinite(lat)&&Number.isFinite(lon)?[lat,lon]:null}
 function pending(){return deliveries.filter(d=>!d.done)}
 function orderedDeliveries(){let arr=deliveries.map((d,i)=>({...d,_i:i}));if(sortMode==="route")arr.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;let ar=Number(a.routeOrder)||999999,br=Number(b.routeOrder)||999999;return ar-br||((sequenceNumber(a)||999999)-(sequenceNumber(b)||999999))||a._i-b._i});else arr.sort((a,b)=>{let ar=sequenceNumber(a)||999999,br=sequenceNumber(b)||999999;return ar-br||a._i-b._i});return arr}
@@ -32,7 +40,7 @@ function render(){
  updateNextBox()
 }
 function nextDelivery(){if(manualNext!==null&&!deliveries[manualNext]?.done)return deliveries[manualNext];return deliveries.find(x=>!x.done&&Number(x.routeOrder)===1)||deliveries.find(x=>!x.done&&cleanSequence(x.sequence))||deliveries.find(x=>!x.done)}
-function updateNextBox(){let d=nextDelivery(),box=document.getElementById("nextBox");if(!d){box.textContent="Todas as entregas foram concluídas.";document.getElementById("nextNavigate").disabled=true;document.getElementById("nextDone").disabled=true;return}box.innerHTML=`<div>📦 <b>SEQ ${esc(cleanSequence(d.sequence)||"?")}</b> — ${esc(d.code||d.client)}</div><div class="address">📍 ${esc(d.address)}</div>`;document.getElementById("nextNavigate").disabled=false;document.getElementById("nextDone").disabled=false;document.getElementById("mapSubtitle").textContent=`Próxima: SEQ ${cleanSequence(d.sequence)||"?"}`}
+function updateNextBox(){let d=nextDelivery(),box=document.getElementById("nextBox");if(!d){box.textContent="Todas as entregas foram concluídas.";document.getElementById("nextNavigate").disabled=true;document.getElementById("nextDone").disabled=true;return}box.innerHTML=`<div>📦 <b>SEQ ${esc(cleanSequence(d.sequence)||"?")}</b> — ${esc(d.code||d.client)}</div><div class="address">📍 ${esc(d.destinationAddress||d.address||"Endereço não informado")}</div>`;document.getElementById("nextNavigate").disabled=false;document.getElementById("nextDone").disabled=false;document.getElementById("mapSubtitle").textContent=`Próxima: SEQ ${cleanSequence(d.sequence)||"?"} • ${d.destinationAddress||d.address||"Endereço"}`}
 function toggle(i){if(!deliveries[i])return;deliveries[i].done=!deliveries[i].done;if(deliveries[i].done&&(manualNext===i||selectedDelivery===i)){manualNext=null;selectedDelivery=null;}save();if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}toast(deliveries[i].done?`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} confirmada — removida do mapa`:`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} reaberta`)}
 function selectNext(i){if(deliveries[i].done){alert("Esta entrega já está concluída.");return}manualNext=i;selectedDelivery=i;render();openMap();setTimeout(()=>{showDeliveryDetails(i);let d=deliveries[i],c=coords(d);if(c)map.setView(c,16);},100);toast(`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} definida como próxima`)}
 function navigate(i){let d=deliveries[i],dest=coords(d)?coords(d).join(","):d.address;window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest),"_blank")}
@@ -43,7 +51,45 @@ function clearMapLayers(){markers.forEach(m=>map.removeLayer(m));markers=[];if(r
 function updateUserMarker(){if(!map||!currentPosition)return;if(userMarker)map.removeLayer(userMarker);let icon=L.divIcon({className:"",html:`<div class="user-location"><span></span></div>`,iconSize:[34,34],iconAnchor:[17,17]});userMarker=L.marker(currentPosition,{icon,zIndexOffset:1000}).addTo(map).bindPopup("📍 Minha posição em tempo real");if(followUser)map.setView(currentPosition,Math.max(map.getZoom(),15),{animate:true});document.getElementById("gpsStatus").textContent="GPS ativo • posição atualizada"}
 function startLocationWatch(){if(!navigator.geolocation){document.getElementById("gpsStatus").textContent="GPS não disponível";return}if(watchId!==null)return;watchId=navigator.geolocation.watchPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];updateUserMarker();if(map&&document.getElementById("mapModal").classList.contains("open")&&Date.now()-lastGpsRouteUpdate>10000){lastGpsRouteUpdate=Date.now();drawMap(false)}},()=>{document.getElementById("gpsStatus").textContent="GPS indisponível";toast("Não foi possível acompanhar sua posição. Autorize o GPS.")},{enableHighAccuracy:true,maximumAge:2000,timeout:15000})}
 function stopLocationWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}}
-function showDeliveryDetails(i){selectedDelivery=i;if(i===null||!deliveries[i]||deliveries[i].done){document.getElementById("deliveryDetails").classList.remove("show");document.getElementById("deliveryDetails").innerHTML="";document.getElementById("mapModal").classList.remove("detail-open");if(map)drawMap(false);return}let d=deliveries[i];document.getElementById("deliveryDetails").innerHTML=`<div class="detailTop"><div><span class="detailStatus">PENDENTE</span><h3>SEQ ${esc(cleanSequence(d.sequence)||"?")}</h3><b>${esc(d.code||d.client)}</b></div><button class="detailClose" onclick="showDeliveryDetails(null)">×</button></div><div class="detailAddress">📍 ${esc(d.address)}</div><div class="detailGrid"><div><small>Sequence</small><b>${esc(cleanSequence(d.sequence)||"SEM NÚMERO")}</b></div><div><small>Rota calculada</small><b>${esc(d.routeOrder||"-")}</b></div><div><small>Stop (referência)</small><b>${esc(d.originalStop||"-")}</b></div></div><div class="detailActions"><button class="secondary" onclick="navigate(${i})">🧭 Navegar</button><button class="success" onclick="toggle(${i})">✅ Confirmar entrega</button><button class="primary" onclick="editSequence(${i})">✏️ Corrigir Sequence</button><button class="secondary" onclick="selectNext(${i})">👉 Definir como próxima</button></div>`;document.getElementById("deliveryDetails").classList.add("show");document.getElementById("mapModal").classList.add("detail-open")}
+function showDeliveryDetails(i){
+ selectedDelivery=i;
+ if(i===null||!deliveries[i]||deliveries[i].done){
+   document.getElementById("deliveryDetails").classList.remove("show");
+   document.getElementById("deliveryDetails").innerHTML="";
+   document.getElementById("mapModal").classList.remove("detail-open");
+   if(map)drawMap(false);
+   return;
+ }
+ const d=deliveries[i];
+ const dest=d.destinationAddress||d.address||"Endereço não informado";
+ const bairro=d.bairro||""; const city=d.city||""; const zip=d.zip||"";
+ const extra=[bairro,city,zip].filter(Boolean).join(" • ");
+ document.getElementById("deliveryDetails").innerHTML=`
+ <div class="detailTop">
+   <div><span class="detailStatus">PENDENTE</span><h3>SEQ ${esc(cleanSequence(d.sequence)||"?")}</h3><b>${esc(d.code||d.client||"Entrega")}</b></div>
+   <button class="detailClose" onclick="showDeliveryDetails(null)">×</button>
+ </div>
+ <div class="destinationCard">
+   <span class="addressLabel">DESTINATION ADDRESS • ENDEREÇO DE ENTREGA</span>
+   <div class="destinationText">📍 ${esc(dest)}</div>
+   ${extra?`<div class="destinationExtra">${esc(extra)}</div>`:""}
+   <button class="copyAddress" title="Copiar endereço" onclick="copyAddress(${i})">📋 Copiar endereço</button>
+ </div>
+ <div class="detailGrid">
+   <div><small>Sequence</small><b>${esc(cleanSequence(d.sequence)||"SEM NÚMERO")}</b></div>
+   <div><small>Rota</small><b>${esc(d.routeOrder||"-")}</b></div>
+ </div>
+ <div class="detailActions">
+   <button class="secondary" onclick="navigate(${i})">🧭 Navegar</button>
+   <button class="success confirmBig" onclick="toggle(${i})">✅ CONFIRMAR ENTREGA</button>
+   <button class="primary" onclick="editSequence(${i})">✏️ Corrigir Sequence</button>
+   <button class="secondary" onclick="selectNext(${i})">👉 Definir como próxima</button>
+ </div>`;
+ document.getElementById("deliveryDetails").classList.add("show");
+ document.getElementById("mapModal").classList.add("detail-open");
+}
+
+function copyAddress(i){let a=deliveries[i]?.destinationAddress||deliveries[i]?.address||"";if(!a)return; if(navigator.clipboard){navigator.clipboard.writeText(a).then(()=>toast("Endereço copiado"),()=>toast("Não foi possível copiar o endereço"));}else{let ta=document.createElement("textarea");ta.value=a;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("Endereço copiado")}}
 function getBairro(address){let p=String(address||"").split(",");return p.length>=3?p[p.length-3]||"-":"-"}
 function getCidade(address){let p=String(address||"").split(",");return p.length>=2?p[p.length-2]||"-":"-"}
 function drawMap(fit=true){if(!map)return;clearMapLayers();let points=[];deliveries.forEach((d,i)=>{let c=coords(d);if(!c||(!showDone&&d.done))return;points.push(c);let cls=d.done?"done":(selectedDelivery===i?"selected":(manualNext===i?"next":"pending"));let label=cleanSequence(d.sequence)||"?";let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${d.done?"✓":esc(label)}</div>`,iconSize:[40,40],iconAnchor:[20,20]});let m=L.marker(c,{icon}).addTo(map);m.on("click",()=>{if(d.done)return;showDeliveryDetails(i);map.setView(c,Math.max(map.getZoom(),15),{animate:true})});markers.push(m)});if(currentPosition)updateUserMarker();if(points.length&&fit&&!currentPosition){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}let ord=deliveries.filter(d=>!d.done&&coords(d));ord.sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));let line=ord.map(coords);if(manualNext!==null&&!deliveries[manualNext]?.done){let md=deliveries[manualNext],mc=coords(md);if(mc){line=[mc,...line.filter(c=>c[0]!==mc[0]||c[1]!==mc[1])]}}if(currentPosition)line=[currentPosition,...line];if(line.length>1)drawRoadRoute(line);document.getElementById("mapPending").textContent=pending().length;document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length}
@@ -56,9 +102,9 @@ function locate(){startLocationWatch();if(currentPosition&&map){followUser=true;
 function importFile(ev){const f=ev.target.files[0];if(!f)return;if(/\.csv$/i.test(f.name)){let r=new FileReader();r.onload=()=>importCSV(r.result);r.readAsText(f,"UTF-8");ev.target.value="";return}if(typeof XLSX==="undefined"){alert("Biblioteca Excel não carregou.");return}let r=new FileReader();r.onload=e=>{try{let wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:""});importExcel(rows)}catch(err){alert("Erro no Excel: "+err.message)}};r.readAsArrayBuffer(f);ev.target.value=""}
 function norm(s){return String(s??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ")}
 function key(keys,names){let n=names.map(norm);return keys.find(k=>n.includes(norm(k)))||null}
-function importExcel(rows){if(!rows.length){alert("Planilha vazia.");return}let keys=Object.keys(rows[0]),ak=key(keys,["Destination Address","Endereço","Endereco","Address"]),ck=key(keys,["SPX TN","Tracking","Tracking Number","Código","Codigo"]),bk=key(keys,["Bairro"]),city=key(keys,["City","Cidade"]),zip=key(keys,["Zipcode/Postal code","CEP","Zipcode"]),lat=key(keys,["Latitude","Lat"]),lon=key(keys,["Longitude","Long","Lon"]),seq=key(keys,["Sequence","Sequencia","Sequência"]),stop=key(keys,["Stop"]);if(!ak){alert("Não encontrei Destination Address.");return}let n=0;rows.forEach((r,i)=>{let raw=String(r[ak]??"").trim();if(!raw)return;let s=cleanSequence(seq?r[seq]:"");let parts=[raw,bk?r[bk]:"",city?r[city]:"",zip?r[zip]:""].map(x=>String(x??"").trim()).filter(Boolean);deliveries.push({client:ck?String(r[ck]||""):"Entrega "+(i+1),address:[...new Set(parts)].join(", "),phone:"",obs:[s?`Sequence: ${s}`:"",stop?`Stop: ${r[stop]}`:""].filter(Boolean).join(" | "),code:ck?String(r[ck]||""):"",lat:lat?String(r[lat]||""):"",lon:lon?String(r[lon]||""):"",sequence:s,originalSequence:s,originalStop:stop?String(r[stop]||""):"",done:false,routeOrder:""});n++});sortMode="original";save();toast(n+" entregas importadas — confira a Sequence");if(missingSequenceCount())openSequenceEditor()}
+function importExcel(rows){if(!rows.length){alert("Planilha vazia.");return}let keys=Object.keys(rows[0]),ak=key(keys,["Destination Address","Endereço","Endereco","Address"]),ck=key(keys,["SPX TN","Tracking","Tracking Number","Código","Codigo"]),bk=key(keys,["Bairro"]),city=key(keys,["City","Cidade"]),zip=key(keys,["Zipcode/Postal code","CEP","Zipcode"]),lat=key(keys,["Latitude","Lat"]),lon=key(keys,["Longitude","Long","Lon"]),seq=key(keys,["Sequence","Sequencia","Sequência"]),stop=key(keys,["Stop"]);if(!ak){alert("Não encontrei Destination Address.");return}let n=0;rows.forEach((r,i)=>{let raw=String(r[ak]??"").trim();if(!raw)return;let s=cleanSequence(seq?r[seq]:"");let parts=[raw,bk?r[bk]:"",city?r[city]:"",zip?r[zip]:""].map(x=>String(x??"").trim()).filter(Boolean);deliveries.push({client:ck?String(r[ck]||""):"Entrega "+(i+1),address:[...new Set(parts)].join(", "),destinationAddress:raw,bairro:bk?String(r[bk]||"").trim():"",city:city?String(r[city]||"").trim():"",zip:zip?String(r[zip]||"").trim():"",phone:"",obs:s?`Sequence: ${s}`:"",code:ck?String(r[ck]||""):"",lat:lat?String(r[lat]||""):"",lon:lon?String(r[lon]||""):"",sequence:s,originalSequence:s,originalStop:stop?String(r[stop]||""):"",done:false,routeOrder:""});n++});sortMode="original";save();toast(n+" entregas importadas — confira a Sequence");if(missingSequenceCount())openSequenceEditor()}
 function importCSV(){alert("Para este modelo de entrega, prefira o Excel .xlsx.")}
-function downloadTemplate(){if(!XLSX)return;let ws=XLSX.utils.aoa_to_sheet([["AT ID","Sequence","Stop","SPX TN","Destination Address","Bairro","City","Zipcode/Postal code","Latitude","Longitude"],["AT20260919A130T",1,1,"BR000000000000","Rua Exemplo, 100","Centro","Santa Fé","86770-000",-23.03849,-51.8018]]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Sheet1");XLSX.writeFile(wb,"modelo-rotapro.xlsx")}
+function downloadTemplate(){if(!XLSX)return;let ws=XLSX.utils.aoa_to_sheet([["AT ID","Sequence","SPX TN","Destination Address","Bairro","City","Zipcode/Postal code","Latitude","Longitude"],["AT20260919A130T",1,"BR000000000000","Rua Exemplo, 100","Centro","Santa Fé","86770-000",-23.03849,-51.8018]]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Sheet1");XLSX.writeFile(wb,"modelo-rotapro.xlsx")}
 function exportCSV(){let rows=[["Rota","Sequence","SPX TN","Endereço","Latitude","Longitude","Status"],...deliveries.map(d=>[d.routeOrder||"",cleanSequence(d.sequence)||"",d.code||"",d.address,d.lat||"",d.lon||"",d.done?"Entregue":"Pendente"])];download("rotapro-rota.csv","\ufeff"+rows.map(r=>r.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(";")).join("\n"),"text/csv")}
 function download(n,d,t){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([d],{type:t}));a.download=n;a.click()}
 function clearAll(){if(confirm("Apagar todas as entregas?")){deliveries=[];manualNext=null;selectedDelivery=null;save();toast("Entregas apagadas")}}
