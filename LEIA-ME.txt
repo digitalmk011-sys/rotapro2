@@ -1,11 +1,24 @@
-RotaPro 0.8.1 - Detalhes completos da entrega
+ROTAPRO 1.2 — SEQUENCE COMO IDENTIFICADOR PRINCIPAL
 
-Novidades:
-- Ao tocar no ponto do mapa, mostra Destination Address separado do bairro, cidade e CEP.
-- Mostra SPX TN, AT ID, Sequence/ordem original, Stop, latitude e longitude.
-- Mostra a ordem otimizada quando existir.
-- Quando existem várias entregas no mesmo endereço/local, informa quantas são e mostra os números de ordem de todas elas.
-- A confirmação continua sendo manual: só muda o estado depois de clicar em Confirmar entrega.
-- Mantém GPS e acompanhamento da posição.
+NOVIDADES
+- Sequence passou a ser o número principal da encomenda.
+- Stop não é mais usado para identificar a entrega; permanece apenas como referência original.
+- Botão "Corrigir Sequence" para preencher/corrigir todas as entregas.
+- "Preencher faltantes" sugere automaticamente números ainda não usados.
+- Bloqueio de Sequences duplicadas ao salvar.
+- Entregas sem Sequence ficam destacadas até serem corrigidas.
+- Sequence aparece na lista, no mapa, nos detalhes e na exportação.
+- Mantidos mapa, GPS em tempo real, seleção manual, confirmação de entrega e otimização.
 
-Para atualizar o GitHub, substitua os arquivos do repositório pelos arquivos desta pasta.
+PLANILHA COMPATÍVEL
+AT ID | Sequence | Stop | SPX TN | Destination Address | Bairro | City | Zipcode/Postal code | Latitude | Longitude
+
+IMPORTANTE
+A Sequence é a referência que acompanha a encomenda. Mesmo que a rota seja otimizada e a ordem das entregas mude, o endereço continua vinculado à sua Sequence.
+
+PARA ATUALIZAR O GITHUB
+1. Extraia este ZIP.
+2. Envie os arquivos para o repositório rotapro2.
+3. Substitua os arquivos antigos.
+4. Aguarde o GitHub Pages atualizar.
+5. Se o celular continuar mostrando a versão antiga, feche a página/PWA e abra novamente.
