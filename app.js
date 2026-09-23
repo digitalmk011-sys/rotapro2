@@ -1,109 +1,39 @@
 let deliveries=JSON.parse(localStorage.getItem("rotapro_deliveries")||"[]");
-
-function save(){localStorage.setItem("rotapro_deliveries",JSON.stringify(deliveries));render()}
+let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,showDone=false,sortMode="route";
+const OSRM="https://router.project-osrm.org";
+function save(){localStorage.setItem("rotapro_deliveries",JSON.stringify(deliveries));render();if(document.getElementById("mapModal").classList.contains("open"))drawMap()}
 function val(id){return document.getElementById(id)?.value.trim()||""}
-function addDelivery(){let client=val("client"),address=val("address"),phone=val("phone");if(!client||!address){alert("Informe cliente e endereço.");return}deliveries.push({client,address,phone,obs:"",code:"",lat:"",lon:"",done:false});["client","address","phone"].forEach(id=>{let e=document.getElementById(id);if(e)e.value=""});save()}
-
-function render(){
- const list=document.getElementById("list"); if(!list)return; list.innerHTML="";
- deliveries.forEach((d,i)=>{let e=document.createElement("div");e.className="item"+(d.done?" done":"");
- e.innerHTML=`<div class="num">${i+1}. ${esc(d.client)}</div><div class="meta">📍 ${esc(d.address)}</div>${d.code?`<div class="meta">📦 ${esc(d.code)}</div>`:""}${d.phone?`<div class="meta">☎️ ${esc(d.phone)}</div>`:""}${d.obs?`<div class="meta">📝 ${esc(d.obs)}</div>`:""}<div class="actions"><button onclick="toggle(${i})">${d.done?"↩️ Reabrir":"✅ Entregue"}</button><button onclick="navigate(${i})">🧭 Navegar</button><button onclick="removeOne(${i})">🗑️</button></div>`;list.appendChild(e)});
- if(!deliveries.length)list.innerHTML='<div class="empty">Nenhuma entrega cadastrada.</div>';
- let total=deliveries.length,done=deliveries.filter(x=>x.done).length;
- document.getElementById("total").textContent=total;document.getElementById("done").textContent=done;document.getElementById("remaining").textContent=total-done;document.getElementById("bar").style.width=(total?done/total*100:0)+"%"
-}
-function toggle(i){deliveries[i].done=!deliveries[i].done;save()}
-function removeOne(i){if(confirm("Remover esta entrega?")){deliveries.splice(i,1);save()}}
-function navigate(i){let d=deliveries[i],dest=(d.lat&&d.lon)?`${d.lat},${d.lon}`:d.address;open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest),"_blank")}
-function optimize(){deliveries.sort((a,b)=>Number(a.done)-Number(b.done));save();alert("Entregas pendentes foram agrupadas.")}
-function clearAll(){if(confirm("Apagar todas as entregas?")){deliveries=[];save()}}
-
-function normalize(s){
- return String(s??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ");
-}
-function keyOf(keys, aliases){
- const wanted=aliases.map(normalize);
- return keys.find(k=>wanted.includes(normalize(k)))||null;
-}
-function importFile(ev){
- const f=ev.target.files[0];if(!f)return;
- if(/\.(csv)$/i.test(f.name)){let r=new FileReader();r.onload=()=>importCSV(r.result);r.readAsText(f,"UTF-8");ev.target.value="";return}
- if(typeof XLSX==="undefined"){alert("A biblioteca Excel não carregou. Verifique sua internet e tente novamente.");ev.target.value="";return}
- let r=new FileReader();
- r.onload=e=>{try{
-   const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
-   const ws=wb.Sheets[wb.SheetNames[0]];
-   const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
-   importDeliveryExcel(rows);
- }catch(err){alert("Não foi possível ler o Excel: "+err.message)}};
- r.readAsArrayBuffer(f);ev.target.value="";
-}
-
-function importDeliveryExcel(rows){
- if(!rows.length){alert("A planilha está vazia.");return}
- const keys=Object.keys(rows[0]);
-
- // Formato real do arquivo enviado pelo usuário:
- // AT ID | Sequence | Stop | SPX TN | Destination Address | Bairro | City | Zipcode/Postal code | Latitude | Longitude
- const addressKey=keyOf(keys,["Destination Address","Endereço","Endereco","Address"]);
- const codeKey=keyOf(keys,["SPX TN","Tracking","Tracking Number","Código","Codigo"]);
- const bairroKey=keyOf(keys,["Bairro","Neighborhood"]);
- const cityKey=keyOf(keys,["City","Cidade"]);
- const zipKey=keyOf(keys,["Zipcode/Postal code","CEP","Zipcode","Postal code"]);
- const latKey=keyOf(keys,["Latitude","Lat"]);
- const lonKey=keyOf(keys,["Longitude","Long","Lon"]);
- const seqKey=keyOf(keys,["Sequence","Sequencia","Sequência"]);
- const stopKey=keyOf(keys,["Stop"]);
-
- if(!addressKey){
-   alert("Não encontrei 'Destination Address'.\n\nColunas encontradas:\n"+keys.join(" | "));
-   return;
- }
-
- let imported=0;
- rows.forEach((r,i)=>{
-   const raw=String(r[addressKey]??"").trim();
-   if(!raw)return;
-   const parts=[raw,bairroKey?r[bairroKey]:"",cityKey?r[cityKey]:"",zipKey?r[zipKey]:""].map(x=>String(x??"").trim()).filter(Boolean);
-   const seq=seqKey?String(r[seqKey]??"").trim():"";
-   const stop=stopKey?String(r[stopKey]??"").trim():"";
-   deliveries.push({
-     client:codeKey?String(r[codeKey]??"").trim():("Entrega "+(imported+1)),
-     address:[...new Set(parts)].join(", "),
-     phone:"",
-     obs:[seq?`Seq: ${seq}`:"",stop?`Stop: ${stop}`:""].filter(Boolean).join(" | "),
-     code:codeKey?String(r[codeKey]??"").trim():"",
-     lat:latKey?String(r[latKey]??"").trim():"",
-     lon:lonKey?String(r[lonKey]??"").trim():"",
-     done:false
-   });
-   imported++;
- });
- save();
- alert(imported+" entregas importadas com sucesso!\n\nFormato reconhecido: Destination Address + Bairro + City + CEP + Latitude/Longitude + SPX TN.");
-}
-
-function importCSV(text){
- const lines=text.replace(/^\ufeff/,"").split(/\r?\n/).filter(Boolean);
- if(lines.length<2){alert("CSV vazio.");return}
- const rows=lines.map(x=>x.split(";").map(v=>v.replace(/^"|"$/g,"").replaceAll('""','"')));
- const h=rows[0].map(normalize);
- const ai=h.findIndex(x=>["destination address","endereco","address"].includes(x));
- const ci=h.findIndex(x=>["cliente","nome","customer"].includes(x));
- if(ai<0){alert("CSV precisa ter Destination Address ou Endereço.");return}
- rows.slice(1).forEach((r,i)=>{if(r[ai])deliveries.push({client:ci>=0&&r[ci]?r[ci]:"Entrega "+(i+1),address:r[ai],phone:"",obs:"",code:"",lat:"",lon:"",done:false})});
- save();alert((rows.length-1)+" entregas importadas.");
-}
-function downloadTemplate(){
- if(typeof XLSX==="undefined"){alert("Aguarde a biblioteca Excel carregar.");return}
- let ws=XLSX.utils.aoa_to_sheet([["AT ID","Sequence","Stop","SPX TN","Destination Address","Bairro","City","Zipcode/Postal code","Latitude","Longitude"],["AT20260919A130T",1,1,"BR000000000000","Rua Exemplo, 100","Centro","Santa Fé","86770-000",-23.03849,-51.8018]]);
- let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Sheet1");XLSX.writeFile(wb,"modelo-rotapro-entregas.xlsx");
-}
-function exportCSV(){
- let rows=[["SPX TN","Endereço","Latitude","Longitude","Status"],...deliveries.map(d=>[d.code||"",d.address,d.lat||"",d.lon||"",d.done?"Entregue":"Pendente"])];
- download("rotapro-entregas.csv","\ufeff"+rows.map(r=>r.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(";")).join("\n"),"text/csv")
-}
-function download(name,data,type){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click()}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=4");
-render();
+function addDelivery(){let client=val("client"),address=val("address"),phone=val("phone");if(!client||!address){alert("Informe cliente e endereço.");return}deliveries.push({client,address,phone,obs:"",code:"",lat:"",lon:"",originalSequence:"",originalStop:"",done:false,routeOrder:""});["client","address","phone"].forEach(id=>document.getElementById(id).value="");save();toast("Entrega adicionada")}
+function coords(d){let lat=parseFloat(String(d.lat).replace(",",".")),lon=parseFloat(String(d.lon).replace(",","."));return Number.isFinite(lat)&&Number.isFinite(lon)?[lat,lon]:null}
+function pending(){return deliveries.filter(d=>!d.done)}
+function orderedDeliveries(){let arr=deliveries.map((d,i)=>({...d,_i:i}));if(sortMode==="route")arr.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;let ar=Number(a.routeOrder)||999999,br=Number(b.routeOrder)||999999;return ar-br||a._i-b._i});return arr}
+function render(){const list=document.getElementById("list");list.innerHTML="";const arr=orderedDeliveries();arr.forEach(d=>{let i=d._i,e=document.createElement("div");e.className="item"+(d.done?" done":"")+(manualNext===i?" next":"");let routeNo=d.routeOrder?`<span class="routeBadge">Rota ${d.routeOrder}</span>`:"";let orig=d.originalSequence?`<span class="originalBadge">Seq. original ${esc(d.originalSequence)}</span>`:"";e.innerHTML=`<div class="itemHead"><div class="routeNum">${d.routeOrder||d.originalStop||i+1}</div><div style="flex:1"><div class="num">${esc(d.code||d.client)}</div><div class="meta">📍 ${esc(d.address)}</div><div class="badges">${routeNo}${orig}</div></div></div><div class="actions"><button onclick="toggle(${i})">${d.done?"↩️ Reabrir":"✅ Entregue"}</button><button onclick="selectNext(${i})">👉 Próxima</button><button onclick="navigate(${i})">🧭 Navegar</button></div>`;list.appendChild(e)});if(!arr.length)list.innerHTML='<div class="empty">Nenhuma entrega cadastrada.</div>';let total=deliveries.length,done=deliveries.filter(x=>x.done).length;document.getElementById("total").textContent=total;document.getElementById("done").textContent=done;document.getElementById("remaining").textContent=total-done;document.getElementById("bar").style.width=(total?done/total*100:0)+"%";updateNextBox()}
+function nextDelivery(){if(manualNext!==null&&!deliveries[manualNext]?.done)return deliveries[manualNext];return deliveries.find(x=>!x.done&&Number(x.routeOrder)===1)||deliveries.find(x=>!x.done)}
+function updateNextBox(){let d=nextDelivery(),box=document.getElementById("nextBox");if(!d){box.textContent="Todas as entregas foram concluídas.";document.getElementById("nextNavigate").disabled=true;document.getElementById("nextDone").disabled=true;return}box.innerHTML=`<div>📦 ${esc(d.code||d.client)}</div><div class="address">📍 ${esc(d.address)}</div>`;document.getElementById("nextNavigate").disabled=false;document.getElementById("nextDone").disabled=false;document.getElementById("mapSubtitle").textContent=`Próxima: ${d.routeOrder||"manual"}`}
+function toggle(i){deliveries[i].done=!deliveries[i].done;if(deliveries[i].done&&manualNext===i)manualNext=null;save();toast(deliveries[i].done?"Entrega concluída — removida do mapa":"Entrega reaberta")}
+function removeOne(i){if(confirm("Remover esta entrega?")){deliveries.splice(i,1);manualNext=null;save()}}
+function selectNext(i){if(deliveries[i].done){alert("Esta entrega já está concluída.");return}manualNext=i;render();openMap();setTimeout(()=>{drawMap();let d=deliveries[i],c=coords(d);if(c)map.setView(c,16);},100);toast("Próxima entrega definida manualmente")}
+function navigate(i){let d=deliveries[i],dest=coords(d)?coords(d).join(","):d.address;window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest),"_blank")}
+function openMap(){document.getElementById("mapModal").classList.add("open");document.getElementById("mapModal").setAttribute("aria-hidden","false");setTimeout(()=>{if(!map)initMap();else{map.invalidateSize();drawMap()}},80)}
+function closeMap(){document.getElementById("mapModal").classList.remove("open");document.getElementById("mapModal").setAttribute("aria-hidden","true")}
+function initMap(){if(!window.L)return;map=L.map("map",{zoomControl:true}).setView([-23.04,-51.81],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);drawMap()}
+function clearMapLayers(){markers.forEach(m=>map.removeLayer(m));markers=[];if(routeLine){map.removeLayer(routeLine);routeLine=null}if(userMarker){map.removeLayer(userMarker);userMarker=null}}
+function drawMap(){if(!map)return;clearMapLayers();let points=[];deliveries.forEach((d,i)=>{let c=coords(d);if(!c||(!showDone&&d.done))return;points.push(c);let cls=d.done?"done":(manualNext===i?"next":"pending");let label=d.routeOrder||d.originalStop||i+1;let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${label}</div>`,iconSize:[32,32],iconAnchor:[16,16]});let m=L.marker(c,{icon}).addTo(map);m.bindPopup(`<b>${esc(d.code||d.client)}</b><br>${esc(d.address)}<br>${d.originalSequence?`Seq. original: ${esc(d.originalSequence)}<br>`:""}<button onclick="selectNext(${i})">Definir como próxima</button> <button onclick="toggle(${i})">${d.done?"Reabrir":"Marcar entregue"}</button>`);m.on("click",()=>{if(!d.done){manualNext=i;render();drawMap()}});markers.push(m)});if(points.length){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}let ord=deliveries.filter(d=>!d.done&&coords(d));ord.sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));let line=ord.map(coords);if(manualNext!==null&&!deliveries[manualNext]?.done){let md=deliveries[manualNext],mc=coords(md);if(mc){line=[mc,...line.filter(c=>c[0]!==mc[0]||c[1]!==mc[1])]}}if(currentPosition)line=[currentPosition,...line];if(line.length>1)drawRoadRoute(line);document.getElementById("mapPending").textContent=pending().length;document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length}
+async function drawRoadRoute(line){try{let chunks=[];for(let i=0;i<line.length;i+=20){let part=line.slice(i,Math.min(i+20,line.length));if(i>0)part.unshift(line[i-1]);if(part.length>1)chunks.push(part)}let all=[];for(const part of chunks){let path=part.map(c=>`${c[1]},${c[0]}`).join(";");let r=await fetch(`${OSRM}/route/v1/driving/${path}?overview=full&geometries=geojson&steps=false`);if(!r.ok)throw new Error("route");let j=await r.json();let geom=j.routes?.[0]?.geometry?.coordinates||[];geom.forEach(x=>all.push([x[1],x[0]]))}if(all.length&&map){routeLine=L.polyline(all,{color:"#0866ff",weight:5,opacity:.9}).addTo(map)}}catch(e){let fallback=line.map(c=>[c[0],c[1]]);if(fallback.length>1)routeLine=L.polyline(fallback,{color:"#0866ff",weight:4,dashArray:"8 7"}).addTo(map)}}
+function optimizeRoute(){const left=pending().filter(d=>coords(d));if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}let start=currentPosition||coords(left[0]),pool=left.slice(),order=1;while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(start,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;start=coords(d)}manualNext=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada e mostrada no mapa")}
+function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}
+function haversine(a,b){const R=6371,toRad=x=>x*Math.PI/180,dLat=toRad(b[0]-a[0]),dLon=toRad(b[1]-a[1]);const x=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function locate(){if(!navigator.geolocation){alert("Seu navegador não oferece localização.");return}navigator.geolocation.getCurrentPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];if(userMarker)map.removeLayer(userMarker);userMarker=L.circleMarker(currentPosition,{radius:9,color:"#fff",weight:3,fillColor:"#111827",fillOpacity:1}).addTo(map).bindPopup("Minha posição");map.setView(currentPosition,14);drawMap();toast("Sua posição foi atualizada")},()=>alert("Não foi possível obter sua localização. Autorize o GPS no navegador."),{enableHighAccuracy:true,timeout:10000})}
+function importFile(ev){const f=ev.target.files[0];if(!f)return;if(/\.csv$/i.test(f.name)){let r=new FileReader();r.onload=()=>importCSV(r.result);r.readAsText(f,"UTF-8");ev.target.value="";return}if(typeof XLSX==="undefined"){alert("Biblioteca Excel não carregou.");return}let r=new FileReader();r.onload=e=>{try{let wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:""});importExcel(rows)}catch(err){alert("Erro no Excel: "+err.message)}};r.readAsArrayBuffer(f);ev.target.value=""}
+function norm(s){return String(s??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ")}
+function key(keys,names){let n=names.map(norm);return keys.find(k=>n.includes(norm(k)))||null}
+function importExcel(rows){if(!rows.length){alert("Planilha vazia.");return}let keys=Object.keys(rows[0]),ak=key(keys,["Destination Address","Endereço","Endereco","Address"]),ck=key(keys,["SPX TN","Tracking","Tracking Number","Código","Codigo"]),bk=key(keys,["Bairro"]),city=key(keys,["City","Cidade"]),zip=key(keys,["Zipcode/Postal code","CEP","Zipcode"]),lat=key(keys,["Latitude","Lat"]),lon=key(keys,["Longitude","Long","Lon"]),seq=key(keys,["Sequence","Sequencia","Sequência"]),stop=key(keys,["Stop"]);if(!ak){alert("Não encontrei Destination Address.");return}let n=0;rows.forEach((r,i)=>{let raw=String(r[ak]??"").trim();if(!raw)return;let parts=[raw,bk?r[bk]:"",city?r[city]:"",zip?r[zip]:""].map(x=>String(x??"").trim()).filter(Boolean);deliveries.push({client:ck?String(r[ck]||""):"Entrega "+(i+1),address:[...new Set(parts)].join(", "),phone:"",obs:[seq?`Seq: ${r[seq]}`:"",stop?`Stop: ${r[stop]}`:""].filter(Boolean).join(" | "),code:ck?String(r[ck]||""):"",lat:lat?String(r[lat]||""):"",lon:lon?String(r[lon]||""):"",originalSequence:seq?String(r[seq]||""):"",originalStop:stop?String(r[stop]||""):"",done:false,routeOrder:""});n++});save();toast(n+" entregas importadas")}
+function importCSV(){alert("Para este modelo de entrega, prefira o Excel .xlsx.")}
+function downloadTemplate(){if(!XLSX)return;let ws=XLSX.utils.aoa_to_sheet([["AT ID","Sequence","Stop","SPX TN","Destination Address","Bairro","City","Zipcode/Postal code","Latitude","Longitude"],["AT20260919A130T",1,1,"BR000000000000","Rua Exemplo, 100","Centro","Santa Fé","86770-000",-23.03849,-51.8018]]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Sheet1");XLSX.writeFile(wb,"modelo-rotapro.xlsx")}
+function exportCSV(){let rows=[["Rota","Sequência original","SPX TN","Endereço","Latitude","Longitude","Status"],...deliveries.map(d=>[d.routeOrder||"",d.originalSequence||"",d.code||"",d.address,d.lat||"",d.lon||"",d.done?"Entregue":"Pendente"])];download("rotapro-rota.csv","\ufeff"+rows.map(r=>r.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(";")).join("\n"),"text/csv")}
+function download(n,d,t){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([d],{type:t}));a.download=n;a.click()}
+function clearAll(){if(confirm("Apagar todas as entregas?")){deliveries=[];manualNext=null;save();toast("Entregas apagadas")}}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+let toastTimer;function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>x.classList.remove("show"),2200)}
+document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("mapOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{if(currentPosition)map.setView(currentPosition,15);else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=6");render();

@@ -1,25 +1,22 @@
 <!doctype html>
 <html lang="pt-BR"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css"><title>RotaPro</title></head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0866ff"><link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="style.css"><title>RotaPro</title></head>
 <body>
-<header><b>🚚 RotaPro</b><span>● online</span></header>
+<header><div class="brand"><span class="brandPin">●</span><div><b>RotaPro</b><small>Entregas mais rápidas</small></div></div><span id="online">● online</span></header>
 <main>
-<section class="card"><h1>Minha rota</h1>
-<div class="stats"><div><b id="total">0</b><small>Entregas</small></div><div><b id="done">0</b><small>Concluídas</small></div><div><b id="remaining">0</b><small>Pendentes</small></div></div>
-<div class="progress"><i id="bar"></i></div></section>
-<section class="card"><h2>Adicionar entrega</h2>
-<input id="client" placeholder="Nome do cliente"><input id="address" placeholder="Endereço completo"><input id="phone" placeholder="Telefone (opcional)">
-<button onclick="addDelivery()">Adicionar</button>
-<div class="row">
-<label class="file">📊 Importar Excel/CSV<input id="file" type="file" accept=".xlsx,.xls,.csv" onchange="importFile(event)"></label>
-<button class="secondary" onclick="downloadTemplate()">📄 Modelo Excel</button>
-<button class="secondary" onclick="clearAll()">Limpar</button></div>
-<p class="hint">Formato: Cliente, Endereço, Telefone, Observação.</p>
-</section>
-<section class="card"><h2>Entregas</h2><div id="list"></div></section>
+<section class="card hero"><div class="stats"><div><b id="total">0</b><small>Entregas</small></div><div><b id="done">0</b><small>Concluídas</small></div><div><b id="remaining">0</b><small>Pendentes</small></div></div><div class="progress"><i id="bar"></i></div>
+<div class="heroButtons"><button id="optBtn" class="primary">🧭 Otimizar rota</button><button id="openMapBtn" class="mapBtn">🗺️ Ver no mapa</button></div></section>
+
+<section class="card"><h2>Próxima entrega</h2><div id="nextBox" class="nextbox">Selecione uma entrega no mapa ou use a rota otimizada.</div><div class="actions"><button id="nextNavigate" class="primary small">🧭 Navegar</button><button id="nextDone" class="success small">✅ Marcar entregue</button></div></section>
+
+<section class="card"><h2>Entregas</h2><div class="routeTabs"><button id="routeTab" class="tab active">Rota otimizada</button><button id="originalTab" class="tab">Ordem original</button></div><div id="list"></div></section>
+
+<section class="card"><h2>Importar entregas</h2><input id="client" placeholder="Nome/identificação do cliente"><input id="address" placeholder="Endereço completo"><input id="phone" placeholder="Telefone (opcional)"><button onclick="addDelivery()">Adicionar entrega</button><div class="row"><label class="file">📊 Importar Excel/CSV<input id="file" type="file" accept=".xlsx,.xls,.csv"></label><button class="secondary" onclick="downloadTemplate()">📄 Modelo Excel</button><button class="secondary" onclick="clearAll()">Limpar</button></div></section>
 </main>
-<nav><button>📋<small>Entregas</small></button><button onclick="optimize()">🧭<small>Otimizar</small></button><button onclick="exportCSV()">📤<small>Exportar</small></button></nav>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js"></script></body></html>
+<nav><button onclick="window.scrollTo({top:0,behavior:'smooth'})">📋<small>Entregas</small></button><button id="navMap">🗺️<small>Mapa</small></button><button id="navOptimize">🧭<small>Otimizar</small></button><button onclick="exportCSV()">📤<small>Exportar</small></button></nav>
+
+<div id="mapModal" class="mapModal" aria-hidden="true"><div class="mapTop"><button id="closeMap">‹</button><div><b>Mapa da rota</b><small id="mapSubtitle">Selecione uma entrega</small></div><button id="centerMap">⌾</button></div><div id="map"></div><div class="mapBottom"><div class="mapSummary"><b id="mapPending">0</b><span>pendentes</span><b id="mapDone">0</b><span>concluídas</span></div><div class="mapActions"><button id="locateBtn">📍 Minha posição</button><button id="mapOptimize" class="primary">🧭 Otimizar</button><button id="clearRouteBtn" class="secondary">↺ Original</button></div><label class="showDone"><input type="checkbox" id="showDone"> Mostrar entregas concluídas</label></div></div>
+<div id="toast" class="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="app.js"></script></body></html>
