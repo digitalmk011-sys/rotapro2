@@ -253,3 +253,29 @@ header .headerGlow, header .headerInner{display:none!important}
 .compactDetail .detailClose{position:absolute;right:8px;top:8px;width:28px;min-height:28px;height:28px;font-size:18px;padding:0}
 .compactConfirm{width:100%;min-height:42px!important;margin-top:8px;border-radius:11px!important;font-size:12px!important}
 @media(max-width:620px){.mapModal.detail-open #map{bottom:175px}.mapBottom{max-height:28vh;padding:7px 9px 10px}.compactDetail{padding:9px 10px 10px}.compactSeq{font-size:16px}.compactAddress{font-size:13px}.compactLabel{min-width:76px;font-size:8px}.compactConfirm{min-height:40px!important;margin-top:7px}}
+/* RotaPro 2.1 - mapa sem sobreposição e controles compactos */
+.mapModal.detail-open #map{bottom:170px}
+.mapModal.detail-open .mapBottom{max-height:170px;overflow:hidden;padding:7px 9px 9px}
+.mapModal.detail-open .mapSummary,
+.mapModal.detail-open .gpsLine,
+.mapModal.detail-open .showDone{display:none}
+.mapActions{grid-template-columns:repeat(4,1fr);gap:5px;margin-top:4px}
+.mapActions button{min-height:38px!important;height:38px;padding:5px 4px!important;font-size:10px!important;line-height:1.05;border-radius:9px!important;white-space:nowrap}
+.mapModal:not(.detail-open) .mapActions{grid-template-columns:repeat(4,1fr)}
+.compactDetail{padding:8px 10px 9px;border-radius:13px}
+.compactInfo{gap:7px;min-height:26px}
+.compactLabel{min-width:68px;font-size:8px}
+.compactSeq{font-size:15px}
+.compactAddress{font-size:12px;line-height:1.2}
+.compactConfirm{min-height:36px!important;height:36px;margin-top:6px!important;font-size:10px!important;border-radius:9px!important}
+@media(max-width:620px){
+ .mapModal.detail-open #map{bottom:166px}
+ .mapModal.detail-open .mapBottom{max-height:166px;padding:6px 8px 8px}
+ .mapActions{gap:4px}
+ .mapActions button{min-height:36px!important;height:36px;font-size:9px!important;padding:4px 2px!important}
+ .compactDetail{padding:7px 8px 8px}
+ .compactSeq{font-size:14px}
+ .compactAddress{font-size:11px}
+ .compactLabel{min-width:63px;font-size:7px}
+ .compactConfirm{min-height:34px!important;height:34px;font-size:9px!important;margin-top:5px!important}
+}
