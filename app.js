@@ -81,7 +81,22 @@ function importCSV(){alert("Para este modelo de entrega, prefira o Excel .xlsx."
 function downloadTemplate(){if(!XLSX)return;let ws=XLSX.utils.aoa_to_sheet([["AT ID","Sequence","Stop","SPX TN","Destination Address","Bairro","City","Zipcode/Postal code","Latitude","Longitude"],["AT20260919A130T",1,1,"BR000000000000","Rua Exemplo, 100","Centro","Santa Fé","86770-000",-23.03849,-51.8018]]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Sheet1");XLSX.writeFile(wb,"modelo-rotapro.xlsx")}
 function exportCSV(){let rows=[["Ordem otimizada","Ordem/Sequence","SPX TN","Endereço","Latitude","Longitude","Status"],...deliveries.map(d=>[d.routeOrder||"",sequenceValue(d)||"",d.code||"",d.address,d.lat||"",d.lon||"",d.done?"Entregue":"Pendente"])];download("rotapro-rota.csv","\ufeff"+rows.map(r=>r.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(";")).join("\n"),"text/csv")}
 function download(n,d,t){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([d],{type:t}));a.download=n;a.click()}
-function clearAll(){if(confirm("Apagar todas as entregas?")){deliveries=[];manualNext=null;save();toast("Entregas apagadas")}}
+function clearAll(){
+  if(!deliveries.length){toast("Não há rota para limpar");return}
+  const ok=confirm("⚠️ LIMPAR ROTA ATUAL?\n\nIsso removerá todas as entregas desta planilha, ordens corrigidas, entregas concluídas e a ordem otimizada do aparelho.\n\nDepois você poderá importar a planilha correta.\n\nDeseja continuar?");
+  if(!ok)return;
+  deliveries=[];
+  manualNext=null;
+  selectedDelivery=null;
+  currentPosition=null;
+  lastGpsRouteUpdate=0;
+  closeCorrections();
+  if(map){clearMapLayers();map.setView([-23.04,-51.81],13);}
+  localStorage.removeItem("rotapro_deliveries");
+  render();
+  if(document.getElementById("mapModal").classList.contains("open"))drawMap();
+  toast("Rota limpa. Você já pode importar a planilha correta.");
+}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 let toastTimer;function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>x.classList.remove("show"),2200)}
 document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("mapOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});
@@ -94,5 +109,5 @@ document.getElementById("followBtn").addEventListener("click",()=>{followUser=!f
 }
 window.addEventListener("online",updateOnline);
 window.addEventListener("offline",updateOnline);
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=9");
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=10");
 updateOnline();render();
