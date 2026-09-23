@@ -137,3 +137,106 @@ nav{padding:8px 18px 10px;background:rgba(255,255,255,.94);backdrop-filter:blur(
 .mapTop{background:linear-gradient(115deg,#041a31,#063d70 58%,#0877f9);height:76px}.mapBottom{border-radius:28px 28px 0 0}.deliveryDetails{border-radius:21px}.destinationCard{border-radius:17px}.detailActions button,.confirmBig{border-radius:14px}.sequencePanel{border-radius:24px}
 @media(max-width:900px){header{height:92px}.headerInner{padding:8px 14px;gap:12px}.brandLogo{width:270px;height:72px}.headerFeatures{display:none}.headerRight{margin-left:auto}.headerRight small{display:none}main{padding:13px 11px 100px}.visualTips{grid-template-columns:1fr}.stats div{min-height:76px}.heroButtons button{min-height:56px;font-size:14px}}
 @media(max-width:620px){header{height:76px}.headerInner{padding:5px 10px}.brandLogo{width:225px;height:64px;max-width:calc(100vw - 80px)}.onlineBadge{font-size:9px!important;padding:6px 8px!important}.card{border-radius:20px;padding:14px}.stats{gap:8px}.stats div{padding:10px 8px;min-height:72px;box-shadow:none!important;align-items:center;text-align:center}.stats b{font-size:22px}.heroButtons{gap:8px}.heroButtons button{min-height:50px}.visualTips{display:none}.sequenceCard{padding:15px}.sectionTitle{align-items:flex-start}.sectionTitle p{font-size:11px}.sequenceMainBtn{font-size:11px;min-height:43px;padding:9px 11px}.mapTop{height:70px}}
+/* RotaPro 1.8 — visual refinement of the Entregas home only */
+header{
+  height:148px!important;
+  background:
+    radial-gradient(circle at 76% 28%,rgba(25,207,239,.28),transparent 20%),
+    radial-gradient(circle at 92% 76%,rgba(16,111,255,.34),transparent 32%),
+    linear-gradient(115deg,#03172d 0%,#06294c 48%,#063d70 100%)!important;
+  overflow:hidden!important;
+}
+header:before{
+  content:"";position:absolute;right:-8%;bottom:-72px;width:61%;height:170px;
+  background:transparent;border:26px solid rgba(18,130,224,.30);
+  border-left-color:transparent;border-bottom-color:transparent;
+  border-radius:65% 0 0 0;transform:rotate(-8deg);filter:blur(.3px);
+}
+header:after{
+  content:"";position:absolute;right:-3%;bottom:-54px;width:56%;height:142px;
+  background:transparent;border:10px solid rgba(31,222,239,.52);
+  border-left-color:transparent;border-bottom-color:transparent;
+  border-radius:65% 0 0 0;transform:rotate(-8deg);
+  box-shadow:0 0 28px rgba(15,177,255,.20);
+}
+.headerGlow{width:48%!important;background:radial-gradient(ellipse at 15% 50%,rgba(10,118,255,.30),transparent 58%)!important}
+.headerInner{max-width:1500px!important;padding:10px 38px!important;gap:30px!important}
+.brandLogo{width:470px!important;height:112px!important;background:transparent!important;border-radius:0!important;object-fit:contain!important;object-position:left center!important;filter:drop-shadow(0 8px 18px rgba(0,0,0,.18))}
+.headerFeatures{gap:34px!important}
+.headerFeatures span{font-size:22px!important;filter:drop-shadow(0 2px 5px rgba(0,0,0,.2))}
+.headerFeatures b{font-size:14px!important}
+.headerFeatures small{font-size:11px!important;color:#dceef9!important}
+.headerRight{position:relative;z-index:3}
+main{max-width:1500px!important;padding:22px 34px 112px!important}
+.card{border-radius:25px!important;box-shadow:0 12px 34px rgba(24,65,103,.09)!important}
+.hero{padding:20px 22px 22px!important}
+.stats{grid-template-columns:repeat(3,1fr)!important;gap:16px!important}
+.stats div{min-height:104px!important;border-radius:20px!important;padding:16px 24px!important;position:relative;overflow:hidden}
+.stats div:after{content:"";position:absolute;right:-28px;top:-28px;width:90px;height:90px;border-radius:50%;background:rgba(8,119,249,.05)}
+.stats div:nth-child(2):after{background:rgba(22,184,109,.07)}
+.stats div:nth-child(3):after{background:rgba(243,164,42,.08)}
+.stats b{font-size:35px!important;letter-spacing:-1px}
+.stats small{font-size:13px!important}
+.heroButtons{gap:16px!important}
+.heroButtons button{min-height:72px!important;border-radius:18px!important;font-size:18px!important;letter-spacing:.1px}
+.sequenceCard{padding:24px!important}
+.sequenceCard .sectionTitle h2{font-size:22px!important}
+.sequenceCard .sectionTitle p{font-size:13px!important;max-width:1050px!important}
+.sequenceStats{gap:12px!important}
+.sequenceStats div{min-width:125px!important;padding:13px 18px!important;border-radius:14px!important}
+.sequenceAlert{font-size:13px!important;padding:13px 15px!important}
+.visualTips{gap:16px!important}
+.visualTips>div{border-radius:18px!important;padding:16px 18px!important;min-height:74px}
+.nextbox{border-radius:17px!important}
+.routeTabs{border-radius:14px!important}
+nav{height:84px!important}
+
+@media(max-width:1100px){
+  .headerFeatures{gap:18px!important}
+  .headerFeatures span{grid-template-columns:22px auto;font-size:17px!important}
+  .headerFeatures b{font-size:11px!important}.headerFeatures small{font-size:9px!important}
+  .brandLogo{width:390px!important}
+}
+@media(max-width:900px){
+  header{height:104px!important}
+  .headerInner{padding:8px 18px!important}
+  .brandLogo{width:300px!important;height:80px!important}
+  main{padding:15px 14px 100px!important}
+}
+@media(max-width:620px){
+  header{height:86px!important}
+  .headerInner{padding:5px 10px!important}
+  .brandLogo{width:245px!important;height:72px!important;max-width:calc(100vw - 80px)!important}
+  .headerFeatures{display:none!important}
+  main{padding:12px 10px 96px!important}
+  .hero{padding:14px!important}
+  .stats{gap:7px!important}
+  .stats div{min-height:76px!important;padding:10px 6px!important;border-radius:15px!important}
+  .stats b{font-size:23px!important}.stats small{font-size:10px!important}
+  .heroButtons{gap:8px!important}
+  .heroButtons button{min-height:54px!important;font-size:13px!important;border-radius:14px!important}
+  .sequenceCard{padding:15px!important}.sequenceCard .sectionTitle h2{font-size:18px!important}
+}
+
+/* RotaPro 1.9 — header banner integrated as one seamless image */
+header{
+  height:160px!important;
+  position:sticky!important;
+  top:0!important;
+  overflow:hidden!important;
+  padding:0!important;
+  display:block!important;
+  background-color:#031b3b!important;
+  background-image:url("header-banner.png")!important;
+  background-repeat:no-repeat!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  box-shadow:0 5px 20px rgba(3,25,55,.22)!important;
+}
+header .headerGlow, header .headerInner{display:none!important}
+@media(max-width:900px){
+  header{height:112px!important;background-position:center center!important}
+}
+@media(max-width:620px){
+  header{height:96px!important;background-size:cover!important;background-position:center center!important}
+}
