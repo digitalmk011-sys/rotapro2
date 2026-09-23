@@ -1,4 +1,4 @@
-const CACHE="rotapro-v10";
+const CACHE="rotapro-v11";
 const APP=["./","./index.html","./style.css","./app.js","./manifest.json"];
 const EXTERNAL=["https://unpkg.com/leaflet@1.9.4/dist/leaflet.css","https://unpkg.com/leaflet@1.9.4/dist/leaflet.js","https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(async c=>{await c.addAll(APP); for(const u of EXTERNAL){try{const r=await fetch(u,{mode:"cors"}); if(r.ok)await c.put(u,r)}catch(_){} } await self.skipWaiting()})));

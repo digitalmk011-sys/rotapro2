@@ -11,7 +11,9 @@
 
 <section class="card"><h2>Próxima entrega</h2><div id="nextBox" class="nextbox">Selecione uma entrega no mapa ou use a ordem otimizada.</div><div class="actions"><button id="nextNavigate" class="primary small">🧭 Navegar</button><button id="nextDone" class="success small">✅ Marcar entregue</button></div></section>
 
-<section class="card"><h2>Entregas</h2><div class="routeTabs"><button id="routeTab" class="tab active">Ordem otimizada</button><button id="originalTab" class="tab">Ordem original</button></div><div id="list"></div></section>
+<section class="card"><h2>Entregas</h2><div class="routeTabs"><button id="addedBtn" class="addedBtn">⚠️ Adicionados <span id="addedCount">0</span></button><button id="routeTab" class="tab active">Ordem otimizada</button><button id="originalTab" class="tab">Ordem original</button></div><div id="list"></div></section>
+
+<section id="correctionSection" class="card correctionCard" style="display:none"><div class="sectionHead"><div><h2>⚠️ Corrigir ordens</h2><p>Entregas importadas sem número de Sequence. Informe a ordem correta e salve.</p></div><button id="closeCorrection" class="secondary small">Fechar</button></div><div id="correctionList"></div><div class="correctionFooter"><button id="saveCorrections" class="success">💾 Salvar alterações</button></div></section>
 
 <section class="card"><h2>Importar entregas</h2><input id="client" placeholder="Nome/identificação do cliente"><input id="address" placeholder="Endereço completo"><input id="phone" placeholder="Telefone (opcional)"><button onclick="addDelivery()">Adicionar entrega</button><div class="row"><label class="file">📊 Importar Excel/CSV<input id="file" type="file" accept=".xlsx,.xls,.csv"></label><button class="secondary" onclick="downloadTemplate()">📄 Modelo Excel</button><button class="secondary" onclick="clearAll()">Limpar</button></div></section>
 </main>
