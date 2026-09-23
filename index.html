@@ -4,12 +4,14 @@
 <meta name="theme-color" content="#061d38"><link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="style.css"><title>RotaPro 1.6</title></head>
 <body>
-<header><div class="brand"><img src="logo.png" class="brandLogo" alt="RotaPro"><span id="online">● online</span></div></header>
+<header><div class="headerGlow"></div><div class="headerInner"><div class="brand"><img src="logo.png" class="brandLogo" alt="RotaPro"></div><div class="headerFeatures"><span>◉<b>PLANEJE</b><small>SUA ROTA</small></span><span>▣<b>ENTREGUE</b><small>COM EFICIÊNCIA</small></span><span>▥<b>MAIS CONTROLE</b><small>MAIS RESULTADOS</small></span></div><div class="headerRight"><span class="onlineBadge" id="online">● online</span><small>RotaPro 1.7</small></div></div></header>
 <main>
 <section class="card hero"><div class="stats"><div><b id="total">0</b><small>Entregas</small></div><div><b id="done">0</b><small>Concluídas</small></div><div><b id="remaining">0</b><small>Pendentes</small></div></div><div class="progress"><i id="bar"></i></div>
 <div class="heroButtons"><button id="optBtn" class="primary">🧭 Otimizar rota</button><button id="openMapBtn" class="mapBtn">🗺️ Ver no mapa</button></div></section>
 
 <section class="card sequenceCard"><div class="sectionTitle"><div><h2>Identificação das encomendas</h2><p>O número <b>Sequence</b> é o identificador principal. O campo <b>Destination Address</b> é o endereço oficial mostrado na tela e usado na conferência da entrega. Stop não é usado.</p></div><button id="sequenceBtn" class="sequenceMainBtn">✏️ Corrigir Sequence</button></div><div class="sequenceStats"><div><b id="missingSeq">0</b><small>Sem Sequence</small></div><div><b id="duplicateSeq">0</b><small>Duplicadas</small></div></div><div id="sequenceAlert" class="sequenceAlert"></div></section>
+
+<section class="visualTips"><div><span class="tipIcon">💡</span><div><b>Dica</b><small>Confira o endereço antes de confirmar.</small></div></div><div><span class="tipIcon">✓</span><div><b>Segurança</b><small>Sequence identifica a encomenda correta.</small></div></div><div><span class="tipIcon">▥</span><div><b>Produtividade</b><small>Mantenha a rota atualizada.</small></div></div></section>
 
 <section class="card"><h2>Próxima entrega</h2><div id="nextBox" class="nextbox">Selecione uma entrega no mapa ou use a rota otimizada.</div><div class="actions"><button id="nextNavigate" class="primary small">🧭 Navegar</button><button id="nextDone" class="success small">✅ Marcar entregue</button></div></section>
 
