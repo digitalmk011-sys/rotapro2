@@ -1,23 +1,11 @@
-ROTAPRO 0.6 — MAPA INTERATIVO E SELEÇÃO MANUAL
+RotaPro 0.8.1 - Detalhes completos da entrega
 
-Novidades desta versão:
-- Botão “Ver no mapa” abre o mapa em tela cheia.
-- Todas as entregas com coordenadas aparecem no mapa.
-- Toque em qualquer marcador para definir aquela entrega como PRÓXIMA.
-- A entrega escolhida manualmente fica destacada em vermelho.
-- “Marcar como entregue” registra a entrega e, por padrão, remove o ponto do mapa.
-- É possível ativar “Mostrar entregas concluídas” para visualizar os pontos verdes.
-- O mapa mostra a rota atual e tenta desenhar o caminho pelas ruas usando OSRM; se o serviço não responder, usa uma linha de segurança.
-- A lista pode ser exibida na rota otimizada ou na ordem original.
-- Sequence/Stop continuam vinculados à mesma entrega/endereço importado do Excel.
-- Navegação abre o Google Maps usando latitude/longitude quando disponíveis.
-- Sua posição GPS pode ser usada como início visual da rota.
+Novidades:
+- Ao tocar no ponto do mapa, mostra Destination Address separado do bairro, cidade e CEP.
+- Mostra SPX TN, AT ID, Sequence/ordem original, Stop, latitude e longitude.
+- Mostra a ordem otimizada quando existir.
+- Quando existem várias entregas no mesmo endereço/local, informa quantas são e mostra os números de ordem de todas elas.
+- A confirmação continua sendo manual: só muda o estado depois de clicar em Confirmar entrega.
+- Mantém GPS e acompanhamento da posição.
 
-IMPORTANTE:
-A otimização automática desta versão ainda usa proximidade geográfica para definir a ordem. O desenho da rota no mapa usa ruas quando o serviço de roteamento está disponível. Uma próxima versão pode usar tempos de deslocamento pelas ruas também para calcular a sequência automaticamente.
-
-INSTALAÇÃO:
-1. Substitua os arquivos do seu repositório GitHub pelo conteúdo desta pasta.
-2. Aguarde o GitHub Pages publicar.
-3. No celular, abra a página e use “Adicionar à tela inicial”.
-4. Se aparecer uma versão antiga, feche o aplicativo/site e recarregue. O service worker foi atualizado para v6.
+Para atualizar o GitHub, substitua os arquivos do repositório pelos arquivos desta pasta.
