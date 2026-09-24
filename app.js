@@ -125,17 +125,31 @@ function drawMap(fit=true){
  });
  if(currentPosition)updateUserMarker();
  if(points.length&&fit&&!currentPosition){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}
- let ord=deliveries.filter(d=>!d.done&&coords(d));
- ord.sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));
- let line=ord.map(coords);
- if(manualNext!==null&&!deliveries[manualNext]?.done){let md=deliveries[manualNext],mc=coords(md);if(mc){line=[mc,...line.filter(c=>c[0]!==mc[0]||c[1]!==mc[1])]}}
- if(currentPosition)line=[currentPosition,...line];
- if(line.length>1)drawRoadRoute(line);
+ // A otimização fica salva em routeOrder/localStorage, mas não desenhamos a rota inteira.
+ // Durante a entrega mostramos somente o trecho atual: sua posição -> próxima entrega.
+ let next=nextDelivery();
+ if(next&&coords(next)&&currentPosition){
+   drawRoadRoute([currentPosition,coords(next)]);
+ }
  document.getElementById("mapPending").textContent=pending().length;
  document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length;
 }
-async function drawRoadRoute(line){try{let chunks=[];for(let i=0;i<line.length;i+=20){let part=line.slice(i,Math.min(i+20,line.length));if(i>0)part.unshift(line[i-1]);if(part.length>1)chunks.push(part)}let all=[];for(const part of chunks){let path=part.map(c=>`${c[1]},${c[0]}`).join(";");let r=await fetch(`${OSRM}/route/v1/driving/${path}?overview=full&geometries=geojson&steps=false`);if(!r.ok)throw new Error("route");let j=await r.json();let geom=j.routes?.[0]?.geometry?.coordinates||[];geom.forEach(x=>all.push([x[1],x[0]]))}if(all.length&&map){routeLine=L.polyline(all,{color:"#0866ff",weight:5,opacity:.9}).addTo(map)}}catch(e){let fallback=line.map(c=>[c[0],c[1]]);if(fallback.length>1)routeLine=L.polyline(fallback,{color:"#0866ff",weight:4,dashArray:"8 7"}).addTo(map)}}
-function optimizeRoute(){const left=pending().filter(d=>coords(d));if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}let start=currentPosition||coords(left[0]),pool=left.slice(),order=1;while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(start,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;start=coords(d)}manualNext=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada — Sequence permanece como identificação")}
+async function drawRoadRoute(line){
+ try{
+   if(!line||line.length<2)return;
+   const path=line.map(c=>`${c[1]},${c[0]}`).join(";");
+   const r=await fetch(`${OSRM}/route/v1/driving/${path}?overview=full&geometries=geojson&steps=false`);
+   if(!r.ok)throw new Error("route");
+   const j=await r.json();
+   const geom=j.routes?.[0]?.geometry?.coordinates||[];
+   const all=geom.map(x=>[x[1],x[0]]);
+   if(all.length&&map)routeLine=L.polyline(all,{color:"#0866ff",weight:6,opacity:.88}).addTo(map);
+ }catch(e){
+   const fallback=line.map(c=>[c[0],c[1]]);
+   if(fallback.length>1&&map)routeLine=L.polyline(fallback,{color:"#0866ff",weight:5,dashArray:"9 8",opacity:.9}).addTo(map);
+ }
+}
+function optimizeRoute(){const left=pending().filter(d=>coords(d));if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}let start=currentPosition||coords(left[0]),pool=left.slice(),order=1;while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(start,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;start=coords(d)}manualNext=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada e salva — mostrando apenas o próximo trecho")}
 function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}
 function haversine(a,b){const R=6371,toRad=x=>x*Math.PI/180,dLat=toRad(b[0]-a[0]),dLon=toRad(b[1]-a[1]);const x=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function locate(){startLocationWatch();if(currentPosition&&map){followUser=true;updateUserMarker();toast("Acompanhamento GPS ativado");return}if(!navigator.geolocation){alert("Seu navegador não oferece localização.");return}navigator.geolocation.getCurrentPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];followUser=true;updateUserMarker();drawMap(false);toast("Sua posição foi atualizada")},()=>alert("Não foi possível obter sua localização. Autorize o GPS no navegador."),{enableHighAccuracy:true,timeout:10000})}

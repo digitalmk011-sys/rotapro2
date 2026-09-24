@@ -279,3 +279,13 @@ header .headerGlow, header .headerInner{display:none!important}
  .compactLabel{min-width:63px;font-size:7px}
  .compactConfirm{min-height:34px!important;height:34px;font-size:9px!important;margin-top:5px!important}
 }
+
+
+/* RotaPro 2.2 - rota em segundo plano e apenas próximo trecho no mapa */
+/* A ordem otimizada continua salva; a linha completa não é desenhada durante o uso. */
+.compactAddress{font-size:16px!important;line-height:1.35!important;font-weight:850!important;color:#102f50}
+.addressCompact .compactLabel{font-size:9px}
+@media(max-width:620px){
+  .compactAddress{font-size:15px!important;line-height:1.3!important}
+  .addressCompact .compactLabel{font-size:8px}
+}
