@@ -1,5 +1,5 @@
 let deliveries=JSON.parse(localStorage.getItem("rotapro_deliveries")||"[]");
-let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,selectedDelivery=null,selectedGroup=[],showDone=false,sortMode="route",watchId=null,followUser=true,lastGpsRouteUpdate=0;
+let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,selectedDelivery=null,selectedGroup=[],showDone=false,sortMode="route",watchId=null,followUser=true,lastGpsRouteUpdate=0,routeRequestId=0;
 const OSRM="https://router.project-osrm.org";
 
 // Migração das versões anteriores: Sequence passa a ser o identificador principal.
@@ -47,7 +47,7 @@ function navigate(i){let d=deliveries[i],dest=coords(d)?coords(d).join(","):d.ad
 function openMap(){document.getElementById("mapModal").classList.add("open");document.getElementById("mapModal").setAttribute("aria-hidden","false");startLocationWatch();setTimeout(()=>{if(!map)initMap();else{map.invalidateSize();drawMap()}},80)}
 function closeMap(){document.getElementById("mapModal").classList.remove("open");document.getElementById("mapModal").setAttribute("aria-hidden","true");stopLocationWatch()}
 function initMap(){if(!window.L)return;map=L.map("map",{zoomControl:true}).setView([-23.04,-51.81],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);drawMap()}
-function clearMapLayers(){markers.forEach(m=>map.removeLayer(m));markers=[];if(routeLine){map.removeLayer(routeLine);routeLine=null}if(userMarker){map.removeLayer(userMarker);userMarker=null}}
+function clearMapLayers(){routeRequestId++;markers.forEach(m=>map.removeLayer(m));markers=[];if(routeLine){map.removeLayer(routeLine);routeLine=null}if(userMarker){map.removeLayer(userMarker);userMarker=null}}
 function updateUserMarker(){if(!map||!currentPosition)return;if(userMarker)map.removeLayer(userMarker);let icon=L.divIcon({className:"",html:`<div class="user-location"><span></span></div>`,iconSize:[34,34],iconAnchor:[17,17]});userMarker=L.marker(currentPosition,{icon,zIndexOffset:1000}).addTo(map).bindPopup("📍 Minha posição em tempo real");if(followUser)map.setView(currentPosition,Math.max(map.getZoom(),15),{animate:true});document.getElementById("gpsStatus").textContent="GPS ativo • posição atualizada"}
 function startLocationWatch(){if(!navigator.geolocation){document.getElementById("gpsStatus").textContent="GPS não disponível";return}if(watchId!==null)return;watchId=navigator.geolocation.watchPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];updateUserMarker();if(map&&document.getElementById("mapModal").classList.contains("open")&&Date.now()-lastGpsRouteUpdate>10000){lastGpsRouteUpdate=Date.now();drawMap(false)}},()=>{document.getElementById("gpsStatus").textContent="GPS indisponível";toast("Não foi possível acompanhar sua posição. Autorize o GPS.")},{enableHighAccuracy:true,maximumAge:2000,timeout:15000})}
 function stopLocationWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}}
@@ -120,7 +120,7 @@ function drawMap(fit=true){
    const label=labels.length>1?labels[0]+"+":labels[0];
    let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${allDone?"✓":esc(label)}</div>`,iconSize:[40,40],iconAnchor:[20,20]});
    let m=L.marker(c,{icon}).addTo(map);
-   m.on("click",()=>{if(allDone)return;showDeliveryDetails(first);map.setView(c,Math.max(map.getZoom(),15),{animate:true})});
+   m.on("click",()=>{if(allDone)return;manualNext=first;selectedDelivery=first;showDeliveryDetails(first);drawMap(false);map.setView(c,Math.max(map.getZoom(),15),{animate:true});toast(`SEQ ${cleanSequence(deliveries[first].sequence)||"?"} selecionada como próxima`)});
    markers.push(m);
  });
  if(currentPosition)updateUserMarker();
@@ -135,6 +135,7 @@ function drawMap(fit=true){
  document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length;
 }
 async function drawRoadRoute(line){
+ const requestId=routeRequestId;
  try{
    if(!line||line.length<2)return;
    const path=line.map(c=>`${c[1]},${c[0]}`).join(";");
@@ -143,10 +144,10 @@ async function drawRoadRoute(line){
    const j=await r.json();
    const geom=j.routes?.[0]?.geometry?.coordinates||[];
    const all=geom.map(x=>[x[1],x[0]]);
-   if(all.length&&map)routeLine=L.polyline(all,{color:"#0866ff",weight:6,opacity:.88}).addTo(map);
+   if(all.length&&map&&requestId===routeRequestId)routeLine=L.polyline(all,{color:"#0866ff",weight:6,opacity:.88}).addTo(map);
  }catch(e){
    const fallback=line.map(c=>[c[0],c[1]]);
-   if(fallback.length>1&&map)routeLine=L.polyline(fallback,{color:"#0866ff",weight:5,dashArray:"9 8",opacity:.9}).addTo(map);
+   if(fallback.length>1&&map&&requestId===routeRequestId)routeLine=L.polyline(fallback,{color:"#0866ff",weight:5,dashArray:"9 8",opacity:.9}).addTo(map);
  }
 }
 function optimizeRoute(){const left=pending().filter(d=>coords(d));if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}let start=currentPosition||coords(left[0]),pool=left.slice(),order=1;while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(start,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;start=coords(d)}manualNext=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada e salva — mostrando apenas o próximo trecho")}
