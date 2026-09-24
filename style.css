@@ -289,3 +289,8 @@ header .headerGlow, header .headerInner{display:none!important}
   .compactAddress{font-size:15px!important;line-height:1.3!important}
   .addressCompact .compactLabel{font-size:8px}
 }
+
+/* RotaPro 2.4 - instalação como aplicativo */
+.installAppBtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.16);color:#fff;border-radius:9px;padding:7px 10px;font-weight:800;font-size:11px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.installAppBtn:hover{background:rgba(255,255,255,.25)}
+@media(max-width:620px){.installAppBtn{padding:6px 8px;font-size:10px}.headerRight small{display:none}}

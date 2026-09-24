@@ -180,3 +180,26 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 let toastTimer;function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>x.classList.remove("show"),2600)}
 
 document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("mapOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;document.getElementById("followBtn").textContent="📍 Seguindo você";if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("followBtn").addEventListener("click",()=>{followUser=!followUser;document.getElementById("followBtn").textContent=followUser?"📍 Seguindo você":"📍 Seguir posição";if(followUser&&currentPosition)map.setView(currentPosition,16,{animate:true})});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=12");render();
+
+// RotaPro 2.4 - instalação PWA
+let deferredInstallPrompt=null;
+function setupInstallApp(){
+ const btn=document.getElementById('installBtn');
+ if(!btn)return;
+ const standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+ if(standalone){btn.hidden=true;return;}
+ window.addEventListener('beforeinstallprompt',e=>{
+   e.preventDefault(); deferredInstallPrompt=e; btn.hidden=false;
+ });
+ btn.addEventListener('click',async()=>{
+   if(deferredInstallPrompt){
+     deferredInstallPrompt.prompt();
+     try{await deferredInstallPrompt.userChoice}catch(e){}
+     deferredInstallPrompt=null; btn.hidden=true;
+   }else{
+     alert('No celular, use o menu do navegador e escolha “Adicionar à tela inicial” ou “Instalar aplicativo”.');
+   }
+ });
+ window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;btn.hidden=true;toast('RotaPro instalado na tela inicial.');});
+}
+setupInstallApp();
