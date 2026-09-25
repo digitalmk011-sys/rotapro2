@@ -1,5 +1,7 @@
 let deliveries=JSON.parse(localStorage.getItem("rotapro_deliveries")||"[]");
 let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,selectedDelivery=null,selectedGroup=[],showDone=false,sortMode="route",watchId=null,followUser=true,lastGpsRouteUpdate=0,routeRequestId=0;
+let lastCompletedCoord=JSON.parse(localStorage.getItem("rotapro_last_completed_coord")||"null");
+let routeCache=JSON.parse(localStorage.getItem("rotapro_route_cache")||"{}");
 const OSRM="https://router.project-osrm.org";
 
 // Migração das versões anteriores: Sequence passa a ser o identificador principal.
@@ -39,9 +41,12 @@ function render(){
  const alertBox=document.getElementById("sequenceAlert");if(missing||dups){alertBox.classList.add("show");alertBox.innerHTML=`⚠️ <b>${missing+dups} problema(s) de identificação.</b> ${missing?missing+" sem Sequence. ":""}${dups?dups+" com Sequence duplicada.":""} <button onclick="openSequenceEditor()">Corrigir agora</button>`}else{alertBox.classList.remove("show");alertBox.innerHTML=""}
  updateNextBox()
 }
-function nextDelivery(){if(manualNext!==null&&!deliveries[manualNext]?.done)return deliveries[manualNext];return deliveries.find(x=>!x.done&&Number(x.routeOrder)===1)||deliveries.find(x=>!x.done&&cleanSequence(x.sequence))||deliveries.find(x=>!x.done)}
+function nextDelivery(){
+ if(manualNext!==null&&!deliveries[manualNext]?.done)return deliveries[manualNext];
+ return deliveries.find(x=>!x.done&&Number(x.routeOrder)===1)||deliveries.find(x=>!x.done&&cleanSequence(x.sequence))||deliveries.find(x=>!x.done);
+}
 function updateNextBox(){let d=nextDelivery(),box=document.getElementById("nextBox");if(!d){box.textContent="Todas as entregas foram concluídas.";document.getElementById("nextNavigate").disabled=true;document.getElementById("nextDone").disabled=true;return}box.innerHTML=`<div>📦 <b>SEQ ${esc(cleanSequence(d.sequence)||"?")}</b> — ${esc(d.code||d.client)}</div><div class="address">📍 ${esc(d.destinationAddress||d.address||"Endereço não informado")}</div>`;document.getElementById("nextNavigate").disabled=false;document.getElementById("nextDone").disabled=false;document.getElementById("mapSubtitle").textContent=`Próxima: SEQ ${cleanSequence(d.sequence)||"?"} • ${d.destinationAddress||d.address||"Endereço"}`}
-function toggle(i){if(!deliveries[i])return;deliveries[i].done=!deliveries[i].done;if(deliveries[i].done&&(manualNext===i||selectedDelivery===i)){manualNext=null;selectedDelivery=null;}save();if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}toast(deliveries[i].done?`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} confirmada — removida do mapa`:`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} reaberta`)}
+function toggle(i){if(!deliveries[i])return;deliveries[i].done=!deliveries[i].done;if(deliveries[i].done){const c=coords(deliveries[i]);if(c){lastCompletedCoord=c;try{localStorage.setItem("rotapro_last_completed_coord",JSON.stringify(c))}catch(e){}}if(manualNext===i||selectedDelivery===i){manualNext=null;selectedDelivery=null;}}save();if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}toast(deliveries[i].done?`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} confirmada — removida do mapa`:`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} reaberta`)}
 function selectNext(i){if(deliveries[i].done){alert("Esta entrega já está concluída.");return}manualNext=i;selectedDelivery=i;render();openMap();setTimeout(()=>{showDeliveryDetails(i);let d=deliveries[i],c=coords(d);if(c)map.setView(c,16);},100);toast(`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} definida como próxima`)}
 function navigate(i){let d=deliveries[i],dest=coords(d)?coords(d).join(","):d.address;window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest),"_blank")}
 function openMap(){document.getElementById("mapModal").classList.add("open");document.getElementById("mapModal").setAttribute("aria-hidden","false");startLocationWatch();setTimeout(()=>{if(!map)initMap();else{map.invalidateSize();drawMap()}},80)}
@@ -63,7 +68,7 @@ function showDeliveryDetails(i){
    if(map)drawMap(false);
    return;
  }
- const group=groupIndexesByAddress(i).filter(idx=>!deliveries[idx].done);
+ const group=groupIndexesByAddress(i);
  selectedGroup=group.length?group:[i];
  const d=deliveries[i];
  const dest=d.destinationAddress||d.address||"Endereço não informado";
@@ -107,15 +112,17 @@ function drawMap(fit=true){
    if(!groups.has(key))groups.set(key,{indexes:[],coord:c});
    groups.get(key).indexes.push(i);
  });
+ const activeNext=nextDelivery();
  groups.forEach(g=>{
    const pendingIdx=g.indexes.filter(i=>!deliveries[i].done);
    const activeIdx=pendingIdx.length?pendingIdx:g.indexes;
    if(!showDone&&pendingIdx.length===0)return;
    const first=activeIdx[0]; const c=g.coord; points.push(c);
    const isSelected=g.indexes.includes(selectedDelivery);
-   const isNext=g.indexes.includes(manualNext);
+   const isManualNext=g.indexes.includes(manualNext);
+   const isAutoNext=activeNext&&g.indexes.includes(deliveries.indexOf(activeNext));
    const allDone=pendingIdx.length===0;
-   const cls=allDone?"done":(isSelected?"selected":(isNext?"next":"pending"));
+   const cls=allDone?"done":((isManualNext||isAutoNext||isSelected)?"selected":"pending");
    const labels=activeIdx.map(i=>cleanSequence(deliveries[i].sequence)||"?");
    const label=labels.length>1?labels[0]+"+":labels[0];
    let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${allDone?"✓":esc(label)}</div>`,iconSize:[40,40],iconAnchor:[20,20]});
@@ -125,16 +132,33 @@ function drawMap(fit=true){
  });
  if(currentPosition)updateUserMarker();
  if(points.length&&fit&&!currentPosition){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}
- // A otimização fica salva em routeOrder/localStorage, mas não desenhamos a rota inteira.
- // Durante a entrega mostramos somente o trecho atual: sua posição -> próxima entrega.
+ // Mostra somente o trecho atual: sua posição -> próxima entrega.
  let next=nextDelivery();
- if(next&&coords(next)&&currentPosition){
-   drawRoadRoute([currentPosition,coords(next)]);
+ if(next&&coords(next)){
+   const destination=coords(next);
+   const start=currentPosition||lastCompletedCoord;
+   if(start)drawRoadRoute([start,destination],{destinationIndex:deliveries.indexOf(next)});
  }
  document.getElementById("mapPending").textContent=pending().length;
  document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length;
 }
-async function drawRoadRoute(line){
+function routeCacheKey(destinationIndex,to){
+ const d=deliveries[destinationIndex];
+ const seq=cleanSequence(d?.sequence)||String(destinationIndex);
+ const ref=lastCompletedCoord?lastCompletedCoord.join(","):"start";
+ return `${seq}|${ref}|${to.join(",")}`;
+}
+function saveRouteCache(key,geom,from,to){
+ routeCache[key]={geom,savedAt:Date.now(),from,to};
+ const keys=Object.keys(routeCache);
+ if(keys.length>30)keys.sort((a,b)=>(routeCache[a].savedAt||0)-(routeCache[b].savedAt||0)).slice(0,keys.length-30).forEach(k=>delete routeCache[k]);
+ try{localStorage.setItem("rotapro_route_cache",JSON.stringify(routeCache))}catch(e){}
+}
+function cachedRouteFor(destinationIndex,to){
+ const key=routeCacheKey(destinationIndex,to);
+ return routeCache[key]?.geom||null;
+}
+async function drawRoadRoute(line,meta={}){
  const requestId=routeRequestId;
  try{
    if(!line||line.length<2)return;
@@ -144,13 +168,48 @@ async function drawRoadRoute(line){
    const j=await r.json();
    const geom=j.routes?.[0]?.geometry?.coordinates||[];
    const all=geom.map(x=>[x[1],x[0]]);
-   if(all.length&&map&&requestId===routeRequestId)routeLine=L.polyline(all,{color:"#0866ff",weight:6,opacity:.88}).addTo(map);
+   if(all.length&&map&&requestId===routeRequestId){
+     routeLine=L.polyline(all,{color:"#0866ff",weight:6,opacity:.88}).addTo(map);
+     if(meta.destinationIndex>=0)saveRouteCache(routeCacheKey(meta.destinationIndex,line[line.length-1]),all,line[0],line[line.length-1]);
+   }
  }catch(e){
-   const fallback=line.map(c=>[c[0],c[1]]);
-   if(fallback.length>1&&map&&requestId===routeRequestId)routeLine=L.polyline(fallback,{color:"#0866ff",weight:5,dashArray:"9 8",opacity:.9}).addTo(map);
+   if(requestId!==routeRequestId||!map)return;
+   const cached=meta.destinationIndex>=0?cachedRouteFor(meta.destinationIndex,line[line.length-1]):null;
+   const fallback=cached||line.map(c=>[c[0],c[1]]);
+   if(fallback.length>1)routeLine=L.polyline(fallback,{color:cached?"#0b8f4d":"#0866ff",weight:cached?6:5,dashArray:cached?null:"9 8",opacity:.9}).addTo(map);
+   if(cached)toast("Internet indisponível — usando o trecho salvo como referência");
  }
 }
-function optimizeRoute(){const left=pending().filter(d=>coords(d));if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}let start=currentPosition||coords(left[0]),pool=left.slice(),order=1;while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(start,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;start=coords(d)}manualNext=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada e salva — mostrando apenas o próximo trecho")}
+async function optimizeRoute(){
+ const left=pending().filter(d=>coords(d));
+ if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}
+ toast("Calculando a rota mais eficiente pelas ruas...");
+ const start=currentPosition||coords(left[0]);
+ try{
+   const points=currentPosition?[currentPosition,...left.map(coords)]:left.map(coords);
+   const path=points.map(c=>`${c[1]},${c[0]}`).join(";");
+   const r=await fetch(`${OSRM}/trip/v1/driving/${path}?source=first&roundtrip=false&overview=false&steps=false`);
+   if(!r.ok)throw new Error("trip");
+   const j=await r.json();
+   const ordered=(j.waypoints||[]).filter(w=>w.waypoint_index!==undefined).sort((a,b)=>a.waypoint_index-b.waypoint_index);
+   let order=1;
+   ordered.forEach(w=>{
+     if(currentPosition&&w.waypoint_index===0)return;
+     const inputIndex=w.waypoint_index-(currentPosition?1:0);
+     const d=left[inputIndex];
+     if(d)d.routeOrder=order++;
+   });
+   if(order===1)throw new Error("empty");
+   manualNext=null;selectedDelivery=null;sortMode="route";
+   document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");
+   save();openMap();toast("Rota otimizada pelas ruas e salva — próxima entrega destacada em vermelho");
+ }catch(e){
+   // Fallback seguro: mantém a otimização local caso o serviço de roteamento esteja indisponível.
+   let pool=left.slice(),order=1,from=start;
+   while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){let dist=haversine(from,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}let d=pool.splice(best,1)[0];d.routeOrder=order++;from=coords(d)}
+   manualNext=null;selectedDelivery=null;sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");save();openMap();toast("Rota otimizada localmente — o serviço de ruas está indisponível");
+ }
+}
 function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}
 function haversine(a,b){const R=6371,toRad=x=>x*Math.PI/180,dLat=toRad(b[0]-a[0]),dLon=toRad(b[1]-a[1]);const x=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function locate(){startLocationWatch();if(currentPosition&&map){followUser=true;updateUserMarker();toast("Acompanhamento GPS ativado");return}if(!navigator.geolocation){alert("Seu navegador não oferece localização.");return}navigator.geolocation.getCurrentPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];followUser=true;updateUserMarker();drawMap(false);toast("Sua posição foi atualizada")},()=>alert("Não foi possível obter sua localização. Autorize o GPS no navegador."),{enableHighAccuracy:true,timeout:10000})}

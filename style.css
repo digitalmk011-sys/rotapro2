@@ -294,3 +294,14 @@ header .headerGlow, header .headerInner{display:none!important}
 .installAppBtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.16);color:#fff;border-radius:9px;padding:7px 10px;font-weight:800;font-size:11px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .installAppBtn:hover{background:rgba(255,255,255,.25)}
 @media(max-width:620px){.installAppBtn{padding:6px 8px;font-size:10px}.headerRight small{display:none}}
+
+/* RotaPro 2.6 - rota viária otimizada, próxima entrega destacada e modo offline */
+.compactAddress{font-size:17px!important;line-height:1.35!important;font-weight:900!important}
+.compactConfirm{width:100%!important;min-height:52px!important;height:52px!important;border-radius:13px!important;font-size:12px!important;font-weight:900!important}
+.map-marker.selected{background:#ef3333!important;color:#fff!important;transform:scale(1.22);box-shadow:0 0 0 5px #ef333433,0 3px 9px #0005}
+@media(max-width:620px){
+ .mapModal.detail-open #map{bottom:205px!important}
+ .mapModal.detail-open .mapBottom{max-height:205px!important;overflow:hidden;padding:8px 9px 10px!important}
+ .compactAddress{font-size:16px!important;line-height:1.32!important}
+ .compactConfirm{min-height:54px!important;height:54px!important;border-radius:13px!important;font-size:11px!important}
+}
