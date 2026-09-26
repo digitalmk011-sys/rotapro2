@@ -364,3 +364,10 @@ body{
   .mapModal.detail-open .mapActions button{min-height:42px!important;height:42px!important;font-size:10px!important;border-radius:11px!important}
   .mapModal.detail-open .compactConfirm{height:84px!important;min-height:84px!important;font-size:20px!important}
 }
+
+/* RotaPro 2.9 — controles normais no mapa, ocultos ao abrir um endereço */
+.mapModal.detail-open .mapActions{display:none!important}
+.mapActions{grid-template-columns:repeat(4,1fr)!important}
+.mapActions .followActive{background:linear-gradient(145deg,#0a8fe9,#0757b5)!important;color:#fff!important;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -5px 10px rgba(0,0,0,.14),0 5px 10px rgba(0,30,70,.18)!important}
+@media(max-width:620px){.mapModal:not(.detail-open) .mapActions{grid-template-columns:repeat(4,1fr)!important;gap:4px}.mapModal:not(.detail-open) .mapActions button{min-height:39px!important;height:39px!important;font-size:8.5px!important;padding:4px 2px!important;border-radius:10px!important}.mapModal.detail-open .mapActions{display:none!important}}
+.leaflet-control-rotate{z-index:1200!important}

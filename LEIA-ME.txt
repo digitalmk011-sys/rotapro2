@@ -22,3 +22,9 @@ PARA ATUALIZAR O GITHUB
 3. Substitua os arquivos antigos.
 4. Aguarde o GitHub Pages atualizar.
 5. Se o celular continuar mostrando a versão antiga, feche a página/PWA e abra novamente.
+
+
+ROTA PRO 2.9
+- Seguir posição e Otimizar aparecem normalmente na tela do mapa.
+- Ao tocar em uma entrega/endereço, os controles do mapa desaparecem e ficam apenas Sequence, Destination Address e confirmação.
+- O mapa aceita rotação com dois dedos no celular; a bússola no canto superior direito restaura o norte.
