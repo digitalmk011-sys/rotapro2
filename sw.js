@@ -1,4 +1,4 @@
-const CACHE='rotapro-v26';
+const CACHE='rotapro-v27';
 const TILE_CACHE='rotapro-map-v1';
 const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.json','./logo.png','./icon-192.png','./icon-512.png','./header-banner.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));

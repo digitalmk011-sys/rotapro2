@@ -1,4 +1,5 @@
 let deliveries=JSON.parse(localStorage.getItem("rotapro_deliveries")||"[]");
+const LARGE_ADDRESS_THRESHOLD=10;
 let map=null,markers=[],routeLine=null,userMarker=null,currentPosition=null,manualNext=null,selectedDelivery=null,selectedGroup=[],showDone=false,sortMode="route",watchId=null,followUser=true,lastGpsRouteUpdate=0,routeRequestId=0;
 let lastCompletedCoord=JSON.parse(localStorage.getItem("rotapro_last_completed_coord")||"null");
 let routeCache=JSON.parse(localStorage.getItem("rotapro_route_cache")||"{}");
@@ -38,7 +39,15 @@ function render(){
  let total=deliveries.length,done=deliveries.filter(x=>x.done).length,missing=missingSequenceCount(),dups=dup.size;
  document.getElementById("total").textContent=total;document.getElementById("done").textContent=done;document.getElementById("remaining").textContent=total-done;document.getElementById("bar").style.width=(total?done/total*100:0)+"%";
  document.getElementById("missingSeq").textContent=missing;document.getElementById("duplicateSeq").textContent=dups;
+ const homeAdded=document.getElementById("homeAddedText");if(homeAdded)homeAdded.textContent=`Adicionados (${missing})`;
+ const pct=total?Math.round(done/total*100):0;const hp=document.getElementById("homeProgressText");if(hp)hp.textContent=pct+"%";
  const alertBox=document.getElementById("sequenceAlert");if(missing||dups){alertBox.classList.add("show");alertBox.innerHTML=`⚠️ <b>${missing+dups} problema(s) de identificação.</b> ${missing?missing+" sem Sequence. ":""}${dups?dups+" com Sequence duplicada.":""} <button onclick="openSequenceEditor()">Corrigir agora</button>`}else{alertBox.classList.remove("show");alertBox.innerHTML=""}
+ const bigAddresses=addressGroups();
+ const addressAlert=document.getElementById("addressAlertBanner");
+ if(addressAlert){
+   if(bigAddresses.length){const max=bigAddresses[0].indexes.length;addressAlert.classList.add("show");addressAlert.innerHTML=`⚠️ <div><b>${bigAddresses.length} endereço(s) com muitas entregas</b><small>Maior concentração: ${max} entregas no mesmo endereço. Confira o condomínio/prédio antes de confirmar.</small></div><button onclick="openAddressAlerts()">Ver alertas</button>`}
+   else{addressAlert.classList.remove("show");addressAlert.innerHTML=""}
+ }
  updateNextBox()
 }
 function nextDelivery(){
@@ -46,7 +55,7 @@ function nextDelivery(){
  return deliveries.find(x=>!x.done&&Number(x.routeOrder)===1)||deliveries.find(x=>!x.done&&cleanSequence(x.sequence))||deliveries.find(x=>!x.done);
 }
 function updateNextBox(){let d=nextDelivery(),box=document.getElementById("nextBox");if(!d){box.textContent="Todas as entregas foram concluídas.";document.getElementById("nextNavigate").disabled=true;document.getElementById("nextDone").disabled=true;return}box.innerHTML=`<div>📦 <b>SEQ ${esc(cleanSequence(d.sequence)||"?")}</b> — ${esc(d.code||d.client)}</div><div class="address">📍 ${esc(d.destinationAddress||d.address||"Endereço não informado")}</div>`;document.getElementById("nextNavigate").disabled=false;document.getElementById("nextDone").disabled=false;document.getElementById("mapSubtitle").textContent=`Próxima: SEQ ${cleanSequence(d.sequence)||"?"} • ${d.destinationAddress||d.address||"Endereço"}`}
-function toggle(i){if(!deliveries[i])return;deliveries[i].done=!deliveries[i].done;if(deliveries[i].done){const c=coords(deliveries[i]);if(c){lastCompletedCoord=c;try{localStorage.setItem("rotapro_last_completed_coord",JSON.stringify(c))}catch(e){}}if(manualNext===i||selectedDelivery===i){manualNext=null;selectedDelivery=null;}}save();if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}toast(deliveries[i].done?`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} confirmada — removida do mapa`:`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} reaberta`)}
+function toggle(i){if(!deliveries[i])return;deliveries[i].done=!deliveries[i].done;if(deliveries[i].done){const c=coords(deliveries[i]);if(c){lastCompletedCoord=c;try{localStorage.setItem("rotapro_last_completed_coord",JSON.stringify(c))}catch(e){}}if(manualNext===i||selectedDelivery===i){manualNext=null;selectedDelivery=null;}}if(deliveries.length&&deliveries.every(d=>d.done)){deliveries=[];manualNext=null;selectedDelivery=null;selectedGroup=[];routeCache={};lastCompletedCoord=null;try{localStorage.removeItem("rotapro_deliveries");localStorage.removeItem("rotapro_route_cache");localStorage.removeItem("rotapro_last_completed_coord")}catch(e){}save();if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}toast("🎉 Rota concluída! Lista limpa automaticamente. Pronto para a próxima rota.");return}save();if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}toast(deliveries[i].done?`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} confirmada — removida do mapa`:`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} reaberta`)}
 function selectNext(i){if(deliveries[i].done){alert("Esta entrega já está concluída.");return}manualNext=i;selectedDelivery=i;render();openMap();setTimeout(()=>{showDeliveryDetails(i);let d=deliveries[i],c=coords(d);if(c)map.setView(c,16);},100);toast(`SEQ ${cleanSequence(deliveries[i].sequence)||"?"} definida como próxima`)}
 function navigate(i){let d=deliveries[i],dest=coords(d)?coords(d).join(","):d.address;window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest),"_blank")}
 function openMap(){document.getElementById("mapModal").classList.add("open");document.getElementById("mapModal").setAttribute("aria-hidden","false");startLocationWatch();setTimeout(()=>{if(!map)initMap();else{map.invalidateSize();drawMap()}},80)}
@@ -58,6 +67,26 @@ function startLocationWatch(){if(!navigator.geolocation){document.getElementById
 function stopLocationWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}}
 function addressKey(d){return String(d?.destinationAddress||d?.address||"").trim().replace(/\s+/g," ").toLowerCase()}
 function groupIndexesByAddress(i){const key=addressKey(deliveries[i]);if(!key)return [i];return deliveries.map((d,idx)=>addressKey(d)===key?idx:-1).filter(idx=>idx>=0)}
+function addressGroups(){
+ const groups=new Map();
+ deliveries.forEach((d,i)=>{const key=addressKey(d);if(!key)return;if(!groups.has(key))groups.set(key,{address:d.destinationAddress||d.address||"Endereço não informado",indexes:[]});groups.get(key).indexes.push(i)});
+ return [...groups.values()].filter(g=>g.indexes.length>=LARGE_ADDRESS_THRESHOLD).sort((a,b)=>b.indexes.length-a.indexes.length);
+}
+function largeAddressFor(i){const key=addressKey(deliveries[i]);return addressGroups().find(g=>g.indexes.some(idx=>idx===i))||null}
+function openAddressAlerts(){
+ const groups=addressGroups();
+ const modal=document.getElementById("addressAlertModal");
+ const box=document.getElementById("addressAlertList");
+ if(!modal||!box)return;
+ box.innerHTML=groups.length?groups.map(g=>{
+   const pendingCount=g.indexes.filter(i=>!deliveries[i].done).length;
+   const seqs=g.indexes.map(i=>cleanSequence(deliveries[i].sequence)||"?").join(" • ");
+   const level=g.indexes.length>=50?"alertMax":g.indexes.length>=30?"alertHigh":"alertMed";
+   return `<div class="addressAlertItem ${level}"><div class="addressAlertTop"><span class="addressAlertCount">${g.indexes.length}</span><div><b>${esc(g.address)}</b><small>${pendingCount} pendentes • ${g.indexes.length-pendingCount} concluídas</small></div></div><div class="addressAlertSeq"><b>SEQUENCES:</b> ${esc(seqs)}</div></div>`;
+ }).join(""):'<div class="empty">Nenhum endereço com concentração de entregas.</div>';
+ modal.classList.add("open");modal.setAttribute("aria-hidden","false");
+}
+function closeAddressAlerts(){const modal=document.getElementById("addressAlertModal");if(modal){modal.classList.remove("open");modal.setAttribute("aria-hidden","true")}}
 function showDeliveryDetails(i){
  selectedDelivery=i;
  if(i===null||!deliveries[i]||deliveries[i].done){
@@ -73,6 +102,8 @@ function showDeliveryDetails(i){
  const d=deliveries[i];
  const dest=d.destinationAddress||d.address||"Endereço não informado";
  const seqs=selectedGroup.map(idx=>cleanSequence(deliveries[idx].sequence)||"?").join(" - ");
+ const largeGroup=largeAddressFor(i);
+ const largeAlert=largeGroup?`<button class="largeAddressWarning" onclick="openAddressAlerts()">⚠️ ${largeGroup.indexes.length} ENTREGAS NESTE ENDEREÇO <span>VER ALERTA</span></button>`:"";
  document.getElementById("deliveryDetails").innerHTML=`
  <div class="compactDetail">
    <button class="detailClose" onclick="showDeliveryDetails(null)">×</button>
@@ -84,6 +115,7 @@ function showDeliveryDetails(i){
      <span class="compactLabel">DESTINATION ADDRESS</span>
      <div class="compactAddress">📍 ${esc(dest)}</div>
    </div>
+   ${largeAlert}
    <button class="success confirmBig compactConfirm" onclick="confirmAddressGroup()">✅ CONFIRMAR ENTREGA</button>
  </div>`;
  document.getElementById("deliveryDetails").classList.add("show");
@@ -94,7 +126,20 @@ function confirmAddressGroup(){
  if(!group.length)return;
  group.forEach(i=>deliveries[i].done=true);
  const seqs=group.map(i=>cleanSequence(deliveries[i].sequence)||"?").join(" - ");
- manualNext=null;selectedDelivery=null;selectedGroup=[];save();
+ manualNext=null;selectedDelivery=null;selectedGroup=[];
+ const finished=deliveries.length>0 && deliveries.every(d=>d.done);
+ if(finished){
+   deliveries=[];
+   manualNext=null;selectedDelivery=null;selectedGroup=[];
+   try{localStorage.removeItem("rotapro_deliveries");localStorage.removeItem("rotapro_route_cache");localStorage.removeItem("rotapro_last_completed_coord")}catch(e){}
+   routeCache={};lastCompletedCoord=null;
+   save();
+   if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}
+   closeAddressAlerts();
+   toast("🎉 Rota concluída! Lista limpa automaticamente. Pronto para a próxima rota.");
+   return;
+ }
+ save();
  if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(null);drawMap(false)}
  toast(`Entrega confirmada • SEQUENCE ${seqs}`);
 }
@@ -238,7 +283,12 @@ function updateSequenceEditorStats(){let inputs=[...document.querySelectorAll(".
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 let toastTimer;function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>x.classList.remove("show"),2600)}
 
-document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("mapOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;document.getElementById("followBtn").textContent="📍 Seguindo você";if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("followBtn").addEventListener("click",()=>{followUser=!followUser;document.getElementById("followBtn").textContent=followUser?"📍 Seguindo você":"📍 Seguir posição";if(followUser&&currentPosition)map.setView(currentPosition,16,{animate:true})});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=12");render();
+document.getElementById("homeImportBtn")?.addEventListener("click",()=>document.getElementById("file").click());
+document.getElementById("homeSequenceBtn")?.addEventListener("click",openSequenceEditor);
+document.getElementById("homeListBtn")?.addEventListener("click",()=>document.getElementById("list")?.scrollIntoView({behavior:"smooth",block:"start"}));
+document.getElementById("homeManualBtn")?.addEventListener("click",()=>document.getElementById("importSection")?.scrollIntoView({behavior:"smooth",block:"center"}));
+document.getElementById("homeClearBtn")?.addEventListener("click",clearAll);
+document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("mapOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;document.getElementById("followBtn").textContent="📍 Seguindo você";if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("followBtn").addEventListener("click",()=>{followUser=!followUser;document.getElementById("followBtn").textContent=followUser?"📍 Seguindo você":"📍 Seguir posição";if(followUser&&currentPosition)map.setView(currentPosition,16,{animate:true})});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=13");render();
 
 // RotaPro 2.4 - instalação PWA
 let deferredInstallPrompt=null;

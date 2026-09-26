@@ -1,0 +1,24 @@
+RotaPro 2.7 — Atualização visual e operação de rota
+
+ALTERAÇÕES
+1. Página inicial redesenhada com visual futurista, botões 3D, sombras e gradientes.
+2. Ações principais organizadas como referência: Importar Planilha, Adicionados, Ver no Mapa, Otimizar Rota, Lista, Limpar Rota e Adicionar manualmente.
+3. Página do mapa: quando uma entrega está selecionada, Confirmar Entrega fica grande à esquerda e os quatro controles ficam em grade 2x2 à direita:
+   - Seguir posição
+   - Otimizar
+   - Minha posição
+   - Original
+4. Endereços com 10 ou mais entregas são tratados como concentração de entregas.
+5. Foi criado um alerta visual na página inicial e uma janela de alertas com endereço, quantidade, pendentes e todas as Sequences daquele endereço.
+6. Ao abrir uma entrega em endereço com muitas entregas, aparece um aviso para conferir o condomínio/prédio.
+7. Ao confirmar a última entrega da rota, a lista é limpa automaticamente e os dados temporários da rota são removidos, deixando o app pronto para uma nova planilha/rota.
+8. Cache do Service Worker atualizado para a versão 2.7.
+
+REGRAS PRESERVADAS
+- Sequence continua sendo o identificador principal.
+- Destination Address continua sendo o endereço oficial.
+- Stop continua sem uso para identificação.
+- Otimização, GPS, seleção manual, confirmação, mapa, offline e importação Excel foram preservados.
+
+OBSERVAÇÃO
+O limite de alerta para endereço com muitas entregas está em 10. Pode ser alterado facilmente se você preferir 20, 30 ou outro número.
