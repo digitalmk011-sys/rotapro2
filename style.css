@@ -334,3 +334,33 @@ body{
 /* Mapa: mesma lógica visual da referência — confirmar grande à esquerda + 4 controles 2x2 à direita */
 @media(min-width:621px){.mapModal.detail-open .mapBottom{display:grid;grid-template-columns:minmax(0,1.28fr) minmax(220px,.72fr);gap:8px;align-items:center;max-height:225px!important;padding:9px 10px 11px!important}.mapModal.detail-open .deliveryDetails,.mapModal.detail-open .compactDetail{display:contents}.mapModal.detail-open .compactInfo{grid-column:1/-1}.mapModal.detail-open .largeAddressWarning{grid-column:1/-1}.mapModal.detail-open .compactConfirm{grid-column:1;width:96%!important;align-self:stretch;height:78px!important;min-height:78px!important;font-size:19px!important;border-radius:13px!important;box-shadow:inset 0 2px 0 #ffffff66,inset 0 -8px 14px #0002,0 8px 15px #0003!important}.mapModal.detail-open .mapActions{grid-column:2;display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0}.mapModal.detail-open .mapActions button{min-height:37px!important;height:37px!important;font-size:9px!important}.mapModal.detail-open .mapActions button:nth-child(2){order:1}.mapModal.detail-open .mapActions button:nth-child(3){order:2}.mapModal.detail-open .mapActions button:nth-child(1){order:3}.mapModal.detail-open .mapActions button:nth-child(4){order:4}.mapModal.detail-open .mapSummary,.mapModal.detail-open .gpsLine,.mapModal.detail-open .showDone{display:none}}
 @media(max-width:620px){.homeDashboard{padding:14px!important}.homeActionGrid{gap:8px}.homeAction{min-height:67px!important;padding:9px!important;gap:8px}.actionIcon{width:37px;height:37px;min-width:37px;font-size:20px}.homeAction b{font-size:12px}.homeAction small{font-size:9px}.manualAdd3D{min-height:53px!important;font-size:12px}.addressAlertBanner{align-items:flex-start}.addressAlertBanner button{min-height:34px!important;font-size:10px}.addressAlertPanel{max-height:88vh}.addressAlertHeader b{font-size:16px}.mapModal.detail-open .mapBottom{display:grid;grid-template-columns:minmax(0,1.22fr) minmax(145px,.78fr);gap:6px;max-height:205px!important;padding:8px 9px 10px!important}.mapModal.detail-open .deliveryDetails,.mapModal.detail-open .compactDetail{display:contents}.mapModal.detail-open .compactInfo{grid-column:1/-1}.mapModal.detail-open .largeAddressWarning{grid-column:1/-1}.mapModal.detail-open .compactConfirm{grid-column:1;width:96%!important;height:66px!important;min-height:66px!important;font-size:14px!important;border-radius:12px!important}.mapModal.detail-open .mapActions{grid-column:2;display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0}.mapModal.detail-open .mapActions button{min-height:31px!important;height:31px!important;padding:3px 2px!important;font-size:8px!important}.mapModal.detail-open .mapActions button:nth-child(2){order:1}.mapModal.detail-open .mapActions button:nth-child(3){order:2}.mapModal.detail-open .mapActions button:nth-child(1){order:3}.mapModal.detail-open .mapActions button:nth-child(4){order:4}.mapModal.detail-open .mapSummary,.mapModal.detail-open .gpsLine,.mapModal.detail-open .showDone{display:none}.largeAddressWarning{font-size:9px!important}.largeAddressWarning span{font-size:8px!important}}
+
+/* RotaPro 2.8 — ajustes finais solicitados: home +30% no celular e controles do mapa simplificados */
+@media(max-width:620px){
+  .homeDashboard{padding:18px!important;margin-bottom:14px!important}
+  .homeStats{gap:10px;margin-bottom:16px}
+  .homeStats div{padding:13px 9px;min-height:63px}
+  .homeStats b{font-size:28px}
+  .homeProgress{padding:10px 3px 17px}
+  .homeActionGrid{gap:10px}
+  .homeAction{min-height:87px!important;padding:12px 12px!important;gap:10px;border-radius:17px!important}
+  .actionIcon{width:45px;height:45px;min-width:45px;font-size:23px;border-radius:14px}
+  .homeAction b{font-size:13px}
+  .homeAction small{font-size:9.5px;margin-top:6px}
+  .manualAdd3D{min-height:69px!important;margin-top:13px;font-size:12px}
+  .offlineHome{margin-top:13px;padding:11px 12px}
+  .offlineHome>span{width:38px;height:38px}
+  .mapModal.detail-open .mapActions{grid-column:2;display:grid;grid-template-columns:1fr;gap:6px;margin:0}
+  .mapModal.detail-open .mapActions button{min-height:39px!important;height:39px!important;padding:5px 4px!important;font-size:9px!important;border-radius:11px!important}
+  .mapModal.detail-open .mapActions button:first-child{order:1}
+  .mapModal.detail-open .mapActions button:last-child{order:2}
+  .mapModal.detail-open .compactConfirm{grid-column:1;width:96%!important;height:72px!important;min-height:72px!important;font-size:15px!important;border-radius:14px!important;background:linear-gradient(145deg,#16c978 0%,#079b59 48%,#057640 100%)!important;border:1px solid rgba(255,255,255,.34)!important;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -9px 16px rgba(0,0,0,.16),0 9px 16px rgba(0,70,40,.28)!important;text-shadow:0 1px 1px rgba(0,0,0,.22)}
+}
+.mapModal.detail-open .compactConfirm{position:relative;overflow:hidden;background:linear-gradient(145deg,#18d47f 0%,#079f5d 52%,#067641 100%)!important;border:1px solid rgba(255,255,255,.34)!important;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -9px 16px rgba(0,0,0,.16),0 9px 17px rgba(0,70,40,.28)!important}
+.mapModal.detail-open .compactConfirm:before{content:"";position:absolute;left:8%;right:8%;top:5px;height:2px;border-radius:50%;background:rgba(255,255,255,.38);pointer-events:none}
+.mapModal.detail-open .mapActions button{box-shadow:inset 0 2px 0 rgba(255,255,255,.65),inset 0 -5px 10px rgba(0,0,0,.10),0 5px 10px rgba(0,30,70,.15)!important;border:1px solid rgba(255,255,255,.65)!important}
+@media(min-width:621px){
+  .mapModal.detail-open .mapActions{grid-column:2;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0}
+  .mapModal.detail-open .mapActions button{min-height:42px!important;height:42px!important;font-size:10px!important;border-radius:11px!important}
+  .mapModal.detail-open .compactConfirm{height:84px!important;min-height:84px!important;font-size:20px!important}
+}
