@@ -65,7 +65,11 @@ function clearMapLayers(){routeRequestId++;markers.forEach(m=>map.removeLayer(m)
 function updateUserMarker(){if(!map||!currentPosition)return;if(userMarker)map.removeLayer(userMarker);let icon=L.divIcon({className:"",html:`<div class="user-location"><span></span></div>`,iconSize:[34,34],iconAnchor:[17,17]});userMarker=L.marker(currentPosition,{icon,zIndexOffset:1000}).addTo(map).bindPopup("📍 Minha posição em tempo real");if(followUser)map.setView(currentPosition,Math.max(map.getZoom(),15),{animate:true});document.getElementById("gpsStatus").textContent="GPS ativo • posição atualizada"}
 function startLocationWatch(){if(!navigator.geolocation){document.getElementById("gpsStatus").textContent="GPS não disponível";return}if(watchId!==null)return;watchId=navigator.geolocation.watchPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];updateUserMarker();if(map&&document.getElementById("mapModal").classList.contains("open")&&Date.now()-lastGpsRouteUpdate>10000){lastGpsRouteUpdate=Date.now();drawMap(false)}},()=>{document.getElementById("gpsStatus").textContent="GPS indisponível";toast("Não foi possível acompanhar sua posição. Autorize o GPS.")},{enableHighAccuracy:true,maximumAge:2000,timeout:15000})}
 function stopLocationWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}}
-function addressKey(d){return String(d?.destinationAddress||d?.address||"").trim().replace(/\s+/g," ").toLowerCase()}
+function addressKey(d){
+ const raw=String(d?.destinationAddress||d?.address||"").trim().toLowerCase();
+ if(!raw)return "";
+ return raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[ºª]/g,"").replace(/\b(rua|r\.?|av\.?|avenida|rod\.?|rodovia|estrada|est\.?|travessa|tv\.?|alameda|al\.?|praca|praça|pc\.?)/g," ").replace(/[.,;#]/g," ").replace(/\s+/g," ").trim();
+}
 function groupIndexesByAddress(i){const key=addressKey(deliveries[i]);if(!key)return [i];return deliveries.map((d,idx)=>addressKey(d)===key?idx:-1).filter(idx=>idx>=0)}
 function addressGroups(){
  const groups=new Map();
@@ -152,7 +156,7 @@ function drawMap(fit=true){
  let points=[];
  const groups=new Map();
  deliveries.forEach((d,i)=>{
-   let c=coords(d);if(!c||(!showDone&&d.done))return;
+   let c=coords(d);if(!c)return;
    const key=addressKey(d)||`__${i}`;
    if(!groups.has(key))groups.set(key,{indexes:[],coord:c});
    groups.get(key).indexes.push(i);
@@ -160,24 +164,38 @@ function drawMap(fit=true){
  const activeNext=nextDelivery();
  groups.forEach(g=>{
    const pendingIdx=g.indexes.filter(i=>!deliveries[i].done);
-   const activeIdx=pendingIdx.length?pendingIdx:g.indexes;
-   if(!showDone&&pendingIdx.length===0)return;
-   const first=activeIdx[0]; const c=g.coord; points.push(c);
+   const doneIdx=g.indexes.filter(i=>deliveries[i].done);
+   const first=pendingIdx[0]??doneIdx[0];
+   const c=g.coord; points.push(c);
    const isSelected=g.indexes.includes(selectedDelivery);
    const isManualNext=g.indexes.includes(manualNext);
    const isAutoNext=activeNext&&g.indexes.includes(deliveries.indexOf(activeNext));
    const allDone=pendingIdx.length===0;
-   const cls=allDone?"done":((isManualNext||isAutoNext||isSelected)?"selected":"pending");
-   const labels=activeIdx.map(i=>cleanSequence(deliveries[i].sequence)||"?");
-   const label=labels.length>1?labels[0]+"+":labels[0];
-   let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${allDone?"✓":esc(label)}</div>`,iconSize:[40,40],iconAnchor:[20,20]});
-   let m=L.marker(c,{icon}).addTo(map);
-   m.on("click",()=>{if(allDone)return;manualNext=first;selectedDelivery=first;showDeliveryDetails(first);drawMap(false);map.setView(c,Math.max(map.getZoom(),15),{animate:true});toast(`SEQ ${cleanSequence(deliveries[first].sequence)||"?"} selecionada como próxima`)});
+
+   // Entregas concluídas ficam visíveis como pequenos pontos verdes para permitir desfazer.
+   if(allDone){
+     if(!showDone && doneIdx.length===0)return;
+     const seqs=doneIdx.map(i=>cleanSequence(deliveries[i].sequence)||"?").join(" • ");
+     const label=doneIdx.length>1?`✓<span class="done-count">${doneIdx.length}</span>`:"✓";
+     const icon=L.divIcon({className:"",html:`<div class="map-marker done done-small">${label}</div>`,iconSize:[30,30],iconAnchor:[15,15]});
+     let m=L.marker(c,{icon,zIndexOffset:250}).addTo(map);
+     m.bindTooltip(doneIdx.length>1?`Concluídas: ${esc(seqs)}`:`SEQ ${esc(seqs)}`,{direction:"top",offset:[0,-12]});
+     m.on("click",()=>undoCompletedGroup(doneIdx));
+     markers.push(m);
+     return;
+   }
+
+   const cls=(isManualNext||isAutoNext||isSelected)?"selected":"pending";
+   const labels=pendingIdx.map(i=>cleanSequence(deliveries[i].sequence)||"?");
+   const label=labels.length>1?`${esc(labels[0])}<span class="seq-more">+${labels.length-1}</span>`:esc(labels[0]);
+   let icon=L.divIcon({className:"",html:`<div class="map-marker ${cls}">${label}</div>`,iconSize:[44,44],iconAnchor:[22,22]});
+   let m=L.marker(c,{icon,zIndexOffset:300}).addTo(map);
+   m.bindTooltip(labels.length>1?`Sequences: ${esc(labels.join(" • "))}`:`SEQ ${esc(labels[0])}`,{direction:"top",offset:[0,-18]});
+   m.on("click",()=>{manualNext=first;selectedDelivery=first;showDeliveryDetails(first);drawMap(false);map.setView(c,Math.max(map.getZoom(),15),{animate:true});toast(labels.length>1?`Endereço selecionado • ${labels.length} entregas agrupadas`:`SEQ ${cleanSequence(deliveries[first].sequence)||"?"} selecionada como próxima`)});
    markers.push(m);
  });
  if(currentPosition)updateUserMarker();
  if(points.length&&fit&&!currentPosition){let bounds=L.latLngBounds(points);map.fitBounds(bounds.pad(.12))}
- // Mostra somente o trecho atual: sua posição -> próxima entrega.
  let next=nextDelivery();
  if(next&&coords(next)){
    const destination=coords(next);
@@ -186,6 +204,17 @@ function drawMap(fit=true){
  }
  document.getElementById("mapPending").textContent=pending().length;
  document.getElementById("mapDone").textContent=deliveries.filter(d=>d.done).length;
+}
+function undoCompletedGroup(indexes){
+ const valid=(indexes||[]).filter(i=>deliveries[i]?.done);
+ if(!valid.length)return;
+ const seqs=valid.map(i=>cleanSequence(deliveries[i].sequence)||"?").join(" - ");
+ if(!confirm(`Desfazer a entrega?\n\nSEQUENCE: ${seqs}\n\nAs entregas voltarão para pendentes.`))return;
+ valid.forEach(i=>deliveries[i].done=false);
+ manualNext=valid[0]; selectedDelivery=valid[0]; selectedGroup=groupIndexesByAddress(valid[0]);
+ save();
+ if(document.getElementById("mapModal").classList.contains("open")){showDeliveryDetails(valid[0]);drawMap(false)}
+ toast(`↩️ Entrega reaberta • SEQUENCE ${seqs}`);
 }
 function routeCacheKey(destinationIndex,to){
  const d=deliveries[destinationIndex];

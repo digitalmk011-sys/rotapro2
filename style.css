@@ -371,3 +371,16 @@ body{
 .mapActions .followActive{background:linear-gradient(145deg,#0a8fe9,#0757b5)!important;color:#fff!important;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -5px 10px rgba(0,0,0,.14),0 5px 10px rgba(0,30,70,.18)!important}
 @media(max-width:620px){.mapModal:not(.detail-open) .mapActions{grid-template-columns:repeat(4,1fr)!important;gap:4px}.mapModal:not(.detail-open) .mapActions button{min-height:39px!important;height:39px!important;font-size:8.5px!important;padding:4px 2px!important;border-radius:10px!important}.mapModal.detail-open .mapActions{display:none!important}}
 .leaflet-control-rotate{z-index:1200!important}
+
+/* RotaPro 3.0 — leitura maior + agrupamento visual + desfazer entrega */
+.compactAddress{font-size:20px!important;line-height:1.35!important;font-weight:950!important;letter-spacing:.05px}
+.compactSeq{font-size:20px!important;line-height:1.2!important;background:#050b12!important;color:#fff!important;padding:7px 10px!important;border-radius:10px!important;display:block!important;box-shadow:inset 0 2px 4px rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.18)!important;word-break:break-word}
+.compactLabel{font-size:9px!important;font-weight:950!important}
+.map-marker.done-small{width:28px!important;height:28px!important;min-width:28px!important;border-radius:50%!important;font-size:14px!important;background:linear-gradient(145deg,#31dc8b,#07965a)!important;color:#fff!important;border:2px solid rgba(255,255,255,.95)!important;box-shadow:inset 0 2px 3px rgba(255,255,255,.5),0 3px 8px rgba(0,70,40,.32)!important;position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.map-marker.done-small .done-count{position:absolute;right:-8px;top:-7px;min-width:16px;height:16px;padding:0 3px;border-radius:9px;background:#0b4f87;color:#fff;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1px solid #fff}
+.map-marker .seq-more{display:inline-flex;margin-left:2px;font-size:8px;vertical-align:top;opacity:.9}
+@media(max-width:620px){
+ .compactAddress{font-size:19px!important;line-height:1.3!important}
+ .compactSeq{font-size:19px!important;padding:7px 9px!important}
+ .compactLabel{font-size:8px!important}
+}
