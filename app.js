@@ -133,7 +133,10 @@ function showDeliveryDetails(i){
      <div class="compactAddress">📍 ${esc(dest)}</div>
    </div>
    ${largeAlert}
-   <button class="success confirmBig compactConfirm" onclick="confirmAddressGroup()">✅ CONFIRMAR ENTREGA</button>
+   <div class="detailBottomActions">
+     <button class="secondary detailFollowBtn" onclick="followSelectedPosition()">🧭 SEGUIR POSIÇÃO</button>
+     <button class="success confirmBig compactConfirm" onclick="confirmAddressGroup()">✅ CONFIRMAR ENTREGA</button>
+   </div>
  </div>`;
  document.getElementById("deliveryDetails").classList.add("show");
  document.getElementById("mapModal").classList.add("detail-open");
@@ -249,12 +252,71 @@ function clipRouteFromPosition(line,p){if(!p||!line?.length)return line;const id
 function tileUrl(z,x,y){const sub=["a","b","c"][(Math.abs(x+y))%3];return `https://${sub}.tile.openstreetmap.org/${z}/${x}/${y}.png`;}
 function tileXY(lat,lon,z){const scale=Math.pow(2,z),x=Math.floor((lon+180)/360*scale),y=Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*scale);return [x,y];}
 function routeCachePoints(){const pts=[];Object.values(routeCache).forEach(r=>(r?.geom||[]).forEach(p=>pts.push(p)));return pts;}
-async function warmOfflineMap(extraPoints=[]){if(!('caches' in window)||!navigator.onLine)return;const pts=[];deliveries.forEach(d=>{const c=coords(d);if(c)pts.push(c)});if(currentPosition)pts.push(currentPosition);routeCachePoints().forEach(p=>pts.push(p));extraPoints.forEach(p=>pts.push(p));if(!pts.length)return;const urls=new Set();
- // Cache a corridor around the route at three useful zoom levels. This avoids losing street references when the driver moves away from the point where the download started.
- const plans=[{z:13,r:1},{z:14,r:2},{z:15,r:2},{z:16,r:1}];
- for(const [lat,lon] of pts){for(const plan of plans){const [x,y]=tileXY(lat,lon,plan.z);for(let dx=-plan.r;dx<=plan.r;dx++)for(let dy=-plan.r;dy<=plan.r;dy++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0)urls.add(tileUrl(plan.z,xx,yy));}}}
- const list=[...urls].slice(0,1400); try{const cache=await caches.open(TILE_CACHE);for(let i=0;i<list.length;i+=20){await Promise.allSettled(list.slice(i,i+20).map(u=>fetch(u,{mode:'no-cors',cache:'force-cache'}).then(r=>{if(r&&(r.ok||r.type==='opaque'))return cache.put(u,r.clone())}).catch(()=>{})));}}catch(e){} }
-async function cacheOptimizedRoadLegs(){if(!navigator.onLine)return;const ordered=deliveries.filter(d=>!d.done&&coords(d)).sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));const start=currentPosition||lastCompletedCoord;const pts=start?[start,...ordered.map(coords)]:ordered.map(coords);if(pts.length<2)return;try{const path=pts.map(c=>`${c[1]},${c[0]}`).join(';');const r=await fetch(`${OSRM}/route/v1/driving/${path}?overview=false&steps=true&geometries=geojson`);if(!r.ok)throw new Error('cache');const j=await r.json(),legs=j.routes?.[0]?.legs||[];const routePts=[];legs.forEach((leg,idx)=>{const dest=ordered[idx];if(!dest)return;const geom=[];(leg.steps||[]).forEach(st=>(st.geometry?.coordinates||[]).forEach(c=>{const p=[c[1],c[0]];if(!geom.length||geom[geom.length-1][0]!==p[0]||geom[geom.length-1][1]!==p[1])geom.push(p)}));if(geom.length>1){const di=deliveries.indexOf(dest);saveRouteCache(routeCacheKey(di,coords(dest)),geom,pts[idx],coords(dest));routePts.push(...geom)}});warmOfflineMap(routePts); }catch(e){warmOfflineMap()} }
+function sampleRoutePoints(points, everyMeters){
+ const out=[]; if(!points?.length)return out;
+ let last=null;
+ points.forEach(p=>{if(!last||haversine(last,p)*1000>=everyMeters){out.push(p);last=p}});
+ const tail=points[points.length-1]; if(tail&&(!out.length||haversine(out[out.length-1],tail)*1000>20))out.push(tail);
+ return out;
+}
+function addTileNeighborhood(urls,lat,lon,z,r=1){
+ const [x,y]=tileXY(lat,lon,z);
+ for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0)urls.add(tileUrl(z,xx,yy));}
+}
+async function warmOfflineMap(extraPoints=[]){
+ if(!('caches' in window)||!navigator.onLine)return;
+ const pts=[];
+ deliveries.forEach(d=>{const c=coords(d);if(c)pts.push(c)});
+ if(currentPosition)pts.push(currentPosition);
+ routeCachePoints().forEach(p=>pts.push(p));
+ extraPoints.forEach(p=>pts.push(p));
+ if(!pts.length)return;
+ const urls=new Set();
+ // Além dos pontos, prepara um corredor ao longo de toda a geometria da rota.
+ // Zoom baixo cobre a região; zoom alto cobre as ruas usadas pelo entregador.
+ sampleRoutePoints(pts,2200).forEach(p=>addTileNeighborhood(urls,p[0],p[1],13,1));
+ sampleRoutePoints(pts,1100).forEach(p=>addTileNeighborhood(urls,p[0],p[1],14,1));
+ sampleRoutePoints(pts,550).forEach(p=>addTileNeighborhood(urls,p[0],p[1],15,1));
+ sampleRoutePoints(pts,280).forEach(p=>addTileNeighborhood(urls,p[0],p[1],16,1));
+ // Também mantém uma pequena área de segurança em cada entrega.
+ pts.forEach(p=>{addTileNeighborhood(urls,p[0],p[1],14,1);addTileNeighborhood(urls,p[0],p[1],15,1);});
+ const list=[...urls].slice(0,4500);
+ try{
+   const cache=await caches.open(TILE_CACHE);
+   for(let i=0;i<list.length;i+=24){
+     await Promise.allSettled(list.slice(i,i+24).map(u=>fetch(u,{mode:'no-cors',cache:'force-cache'}).then(r=>{if(r&&(r.ok||r.type==='opaque'))return cache.put(u,r.clone())}).catch(()=>{})));
+   }
+ }catch(e){}
+}
+async function cacheOptimizedRoadLegs(){
+ if(!navigator.onLine)return;
+ const ordered=deliveries.filter(d=>!d.done&&coords(d)).sort((a,b)=>(Number(a.routeOrder)||999999)-(Number(b.routeOrder)||999999));
+ const start=currentPosition||lastCompletedCoord;
+ const pts=start?[start,...ordered.map(coords)]:ordered.map(coords);
+ if(pts.length<2)return;
+ try{
+   const path=pts.map(c=>`${c[1]},${c[0]}`).join(';');
+   const r=await fetch(`${OSRM}/route/v1/driving/${path}?overview=false&steps=true&geometries=geojson`);
+   if(!r.ok)throw new Error('cache');
+   const j=await r.json(),legs=j.routes?.[0]?.legs||[];
+   const routePts=[];
+   legs.forEach((leg,idx)=>{
+     const dest=ordered[idx];if(!dest)return;
+     const geom=[];
+     (leg.steps||[]).forEach(st=>(st.geometry?.coordinates||[]).forEach(c=>{
+       const p=[c[1],c[0]];
+       if(!geom.length||geom[geom.length-1][0]!==p[0]||geom[geom.length-1][1]!==p[1])geom.push(p);
+     }));
+     if(geom.length>1){
+       const di=deliveries.indexOf(dest);
+       saveRouteCache(routeCacheKey(di,coords(dest)),geom,pts[idx],coords(dest));
+       routePts.push(...geom);
+     }
+   });
+   // A geometria completa das pernas é usada para baixar o corredor inteiro da rota.
+   await warmOfflineMap(routePts);
+ }catch(e){await warmOfflineMap()}
+}
 async function drawRoadRoute(line,meta={}){
  const requestId=routeRequestId;
  try{
@@ -310,6 +372,12 @@ function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");manualNext=nul
 function haversine(a,b){const R=6371,toRad=x=>x*Math.PI/180,dLat=toRad(b[0]-a[0]),dLon=toRad(b[1]-a[1]);const x=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function locate(){startLocationWatch();if(currentPosition&&map){followUser=true;updateUserMarker();toast("Acompanhamento GPS ativado");return}if(!navigator.geolocation){alert("Seu navegador não oferece localização.");return}navigator.geolocation.getCurrentPosition(p=>{currentPosition=[p.coords.latitude,p.coords.longitude];followUser=true;updateUserMarker();drawMap(false);toast("Sua posição foi atualizada")},()=>alert("Não foi possível obter sua localização. Autorize o GPS no navegador."),{enableHighAccuracy:true,timeout:10000})}
 function toggleMapFollow(){followUser=!followUser;if(followUser){if(currentPosition)updateUserMarker();toast("Acompanhamento da posição ativado")}else{toast("Acompanhamento da posição pausado")};updateFollowButton()}
+function followSelectedPosition(){
+ followUser=true;
+ updateFollowButton();
+ if(currentPosition&&map){map.setView(currentPosition,Math.max(map.getZoom(),16),{animate:true});updateUserMarker();toast("Seguindo sua posição");return}
+ locate();
+}
 
 function updateFollowButton(){const b=document.getElementById("followMapBtn");if(!b)return;b.textContent=followUser?"🧭 Seguir posição":"⏸ Pausar posição";b.classList.toggle("followActive",followUser)}
 

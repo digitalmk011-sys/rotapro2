@@ -384,3 +384,14 @@ body{
  .compactSeq{font-size:19px!important;padding:7px 9px!important}
  .compactLabel{font-size:8px!important}
 }
+
+
+/* RotaPro 3.3 — Seguir posição junto da confirmação + corredor offline completo */
+.mapModal.detail-open .detailBottomActions{grid-column:1;width:96%;display:grid;grid-template-columns:1fr 1.35fr;gap:7px;align-items:stretch}
+.mapModal.detail-open .detailBottomActions .detailFollowBtn{min-height:78px!important;height:78px!important;border-radius:13px!important;font-size:12px!important;font-weight:950!important;background:linear-gradient(145deg,#1189f5,#0756bd)!important;color:#fff!important;border:1px solid rgba(255,255,255,.38)!important;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -8px 14px rgba(0,0,0,.14),0 8px 15px rgba(0,30,70,.22)!important}
+.mapModal.detail-open .detailBottomActions .compactConfirm{width:100%!important;height:78px!important;min-height:78px!important}
+@media(max-width:620px){
+ .mapModal.detail-open .detailBottomActions{grid-column:1;width:96%;grid-template-columns:1fr 1.28fr;gap:5px}
+ .mapModal.detail-open .detailBottomActions .detailFollowBtn{height:72px!important;min-height:72px!important;padding:5px 3px!important;font-size:10px!important;border-radius:12px!important}
+ .mapModal.detail-open .detailBottomActions .compactConfirm{height:72px!important;min-height:72px!important;font-size:14px!important;border-radius:12px!important}
+}
