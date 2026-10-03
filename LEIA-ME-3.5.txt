@@ -1,0 +1,6 @@
+RotaPro 3.5
+
+Ajuste: o botão Seguir posição dentro dos detalhes agora alterna entre SEGUIR e PAUSAR POSIÇÃO.
+Pausar interrompe apenas o acompanhamento/centralização automática do mapa; o GPS continua ativo para manter a posição disponível e permitir retomar o acompanhamento.
+
+Demais funções da versão anterior foram preservadas.

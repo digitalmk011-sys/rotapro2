@@ -1,4 +1,4 @@
-const CACHE='rotapro-v33';
+const CACHE='rotapro-v35';
 const TILE_CACHE='rotapro-map-v3';
 const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.json','./logo.png','./icon-192.png','./icon-512.png','./header-banner.png',
  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

@@ -134,12 +134,14 @@ function showDeliveryDetails(i){
    </div>
    ${largeAlert}
    <div class="detailBottomActions">
-     <button class="secondary detailFollowBtn" onclick="followSelectedPosition()">🧭 SEGUIR POSIÇÃO</button>
+     <button class="secondary detailFollowBtn" onclick="toggleDetailFollowPosition()">🧭 SEGUIR POSIÇÃO</button>
      <button class="success confirmBig compactConfirm" onclick="confirmAddressGroup()">✅ CONFIRMAR ENTREGA</button>
    </div>
  </div>`;
  document.getElementById("deliveryDetails").classList.add("show");
  document.getElementById("mapModal").classList.add("detail-open");
+ const followBtn=document.querySelector(".detailFollowBtn");
+ if(followBtn)followBtn.textContent=followUser?"🧭 PAUSAR POSIÇÃO":"🧭 SEGUIR POSIÇÃO";
 }
 function confirmAddressGroup(){
  const group=(selectedGroup||[]).filter(i=>deliveries[i]&&!deliveries[i].done);
@@ -379,6 +381,20 @@ function followSelectedPosition(){
  locate();
 }
 
+function toggleDetailFollowPosition(){
+ followUser=!followUser;
+ if(followUser){
+   if(currentPosition&&map){map.setView(currentPosition,Math.max(map.getZoom(),16),{animate:true});updateUserMarker();}
+   else locate();
+   toast("Acompanhamento da posição ativado");
+ }else{
+   toast("Acompanhamento da posição pausado");
+ }
+ updateFollowButton();
+ const b=document.querySelector(".detailFollowBtn");
+ if(b){b.textContent=followUser?"🧭 PAUSAR POSIÇÃO":"🧭 SEGUIR POSIÇÃO";b.classList.toggle("followActive",followUser);}
+}
+
 function updateFollowButton(){const b=document.getElementById("followMapBtn");if(!b)return;b.textContent=followUser?"🧭 Seguir posição":"⏸ Pausar posição";b.classList.toggle("followActive",followUser)}
 
 function importFile(ev){const f=ev.target.files[0];if(!f)return;if(/\.csv$/i.test(f.name)){let r=new FileReader();r.onload=()=>importCSV(r.result);r.readAsText(f,"UTF-8");ev.target.value="";return}if(typeof XLSX==="undefined"){alert("Biblioteca Excel não carregou.");return}let r=new FileReader();r.onload=e=>{try{let wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:""});importExcel(rows)}catch(err){alert("Erro no Excel: "+err.message)}};r.readAsArrayBuffer(f);ev.target.value=""}
@@ -410,7 +426,7 @@ document.getElementById("homeSequenceBtn")?.addEventListener("click",openSequenc
 document.getElementById("homeListBtn")?.addEventListener("click",()=>document.getElementById("list")?.scrollIntoView({behavior:"smooth",block:"start"}));
 document.getElementById("homeManualBtn")?.addEventListener("click",()=>document.getElementById("importSection")?.scrollIntoView({behavior:"smooth",block:"center"}));
 document.getElementById("homeClearBtn")?.addEventListener("click",clearAll);
-document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=32");updateFollowButton();render();
+document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=35");updateFollowButton();render();
 
 // RotaPro 2.4 - instalação PWA
 let deferredInstallPrompt=null;

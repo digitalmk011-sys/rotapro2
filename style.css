@@ -395,3 +395,67 @@ body{
  .mapModal.detail-open .detailBottomActions .detailFollowBtn{height:72px!important;min-height:72px!important;padding:5px 3px!important;font-size:10px!important;border-radius:12px!important}
  .mapModal.detail-open .detailBottomActions .compactConfirm{height:72px!important;min-height:72px!important;font-size:14px!important;border-radius:12px!important}
 }
+
+/* RotaPro 3.4 — bloco preto centralizado e botões com proporção igual */
+.mapModal.detail-open .detailBottomActions{
+  grid-column:1;
+  width:calc(100% - 12px);
+  max-width:560px;
+  margin:8px auto 0;
+  padding:8px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  align-items:stretch;
+  justify-content:center;
+  background:linear-gradient(145deg,#05080d,#111821);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:15px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.07),0 8px 18px rgba(0,0,0,.28);
+}
+.mapModal.detail-open .detailBottomActions .detailFollowBtn,
+.mapModal.detail-open .detailBottomActions .compactConfirm{
+  width:100%!important;
+  height:68px!important;
+  min-height:68px!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  border-radius:12px!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  line-height:1.1!important;
+  padding:6px!important;
+}
+.mapModal.detail-open .detailBottomActions .detailFollowBtn{
+  background:linear-gradient(145deg,#1189f5,#0756bd)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.38)!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -7px 12px rgba(0,0,0,.14),0 6px 12px rgba(0,30,70,.25)!important;
+}
+.mapModal.detail-open .detailBottomActions .compactConfirm{
+  background:linear-gradient(145deg,#20c978,#078b50)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.35)!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -7px 12px rgba(0,0,0,.14),0 6px 12px rgba(0,70,40,.25)!important;
+}
+@media(max-width:620px){
+ .mapModal.detail-open .detailBottomActions{
+   width:calc(100% - 8px);
+   padding:7px;
+   gap:6px;
+   border-radius:13px;
+   margin-top:6px;
+ }
+ .mapModal.detail-open .detailBottomActions .detailFollowBtn,
+ .mapModal.detail-open .detailBottomActions .compactConfirm{
+   height:64px!important;
+   min-height:64px!important;
+   font-size:10px!important;
+   padding:5px 3px!important;
+   border-radius:11px!important;
+ }
+}
