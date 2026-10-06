@@ -111,7 +111,9 @@ function showDeliveryDetails(i){
    selectedGroup=[];
    document.getElementById("deliveryDetails").classList.remove("show");
    document.getElementById("deliveryDetails").innerHTML="";
-   document.getElementById("mapModal").classList.remove("detail-open");
+   const mapModal=document.getElementById("mapModal");
+   mapModal.classList.remove("detail-open","detail-size-small","detail-size-medium","detail-size-large");
+   mapModal.style.removeProperty("--detail-panel-h");
    if(map)drawMap(false);
    return;
  }
@@ -142,7 +144,17 @@ function showDeliveryDetails(i){
    </div>
  </div>`;
  document.getElementById("deliveryDetails").classList.add("show");
- document.getElementById("mapModal").classList.add("detail-open");
+ const mapModal=document.getElementById("mapModal");
+ mapModal.classList.remove("detail-size-small","detail-size-medium","detail-size-large");
+ // Painel adaptativo: pouco conteúdo ocupa pouco espaço; listas/endereço longos ganham espaço.
+ const seqText=seqs||"";
+ const seqCount=selectedGroup.length;
+ const needLarge=(seqCount>=20 || dest.length>=90 || seqText.length>=150);
+ const needMedium=(seqCount>=5 || dest.length>=55 || seqText.length>=70);
+ const detailSize=needLarge?"large":needMedium?"medium":"small";
+ mapModal.classList.add(`detail-size-${detailSize}`);
+ mapModal.style.setProperty("--detail-panel-h", detailSize==="large" ? "min(52vh,430px)" : detailSize==="medium" ? "285px" : "205px");
+ mapModal.classList.add("detail-open");
  const followBtn=document.querySelector(".detailFollowBtn");
  if(followBtn)followBtn.textContent=followUser?"🧭 PAUSAR POSIÇÃO":"🧭 SEGUIR POSIÇÃO";
 }

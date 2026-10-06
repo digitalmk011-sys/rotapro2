@@ -624,3 +624,65 @@ body{
   }
 }
 .leaflet-control-container{position:relative;z-index:2!important}
+
+/* ===== RotaPro 3.10 — painel de detalhes com altura adaptativa ===== */
+.mapModal.detail-open #map{
+  bottom:var(--detail-panel-h,205px)!important;
+}
+.mapModal.detail-open .mapBottom{
+  height:var(--detail-panel-h,205px)!important;
+  min-height:205px!important;
+  max-height:min(52vh,430px)!important;
+  overflow:hidden!important;
+  z-index:1500!important;
+}
+.mapModal.detail-open .deliveryDetails,
+.mapModal.detail-open .compactDetail{
+  min-height:0!important;
+  overflow:hidden!important;
+}
+.mapModal.detail-open .sequenceScroll{
+  max-height:58px!important;
+  overflow-y:auto!important;
+}
+.mapModal.detail-open .compactAddress{
+  max-height:48px!important;
+  overflow-y:auto!important;
+}
+.mapModal.detail-open.detail-size-medium .sequenceScroll{
+  max-height:92px!important;
+}
+.mapModal.detail-open.detail-size-medium .compactAddress{
+  max-height:70px!important;
+}
+.mapModal.detail-open.detail-size-large .sequenceScroll{
+  max-height:120px!important;
+}
+.mapModal.detail-open.detail-size-large .compactAddress{
+  max-height:105px!important;
+}
+.mapModal.detail-open .detailBottomActions{
+  position:absolute!important;
+  left:8px!important;
+  right:8px!important;
+  bottom:8px!important;
+  z-index:1600!important;
+}
+@media(max-width:620px){
+  .mapModal.detail-open #map{
+    bottom:var(--detail-panel-h,205px)!important;
+  }
+  .mapModal.detail-open .mapBottom{
+    height:var(--detail-panel-h,205px)!important;
+    max-height:min(52vh,430px)!important;
+    min-height:205px!important;
+    padding:7px 8px 9px!important;
+  }
+  .mapModal.detail-open .sequenceScroll{max-height:54px!important}
+  .mapModal.detail-open .compactAddress{max-height:46px!important}
+  .mapModal.detail-open.detail-size-medium .sequenceScroll{max-height:78px!important}
+  .mapModal.detail-open.detail-size-medium .compactAddress{max-height:62px!important}
+  .mapModal.detail-open.detail-size-large .sequenceScroll{max-height:105px!important}
+  .mapModal.detail-open.detail-size-large .compactAddress{max-height:88px!important}
+  .mapModal.detail-open .detailBottomActions{left:7px!important;right:7px!important;bottom:7px!important}
+}

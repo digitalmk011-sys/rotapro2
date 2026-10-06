@@ -1,0 +1,10 @@
+RotaPro PWA 3.10 — Painel de detalhes adaptativo
+
+Ajuste desta versão:
+- O painel SEQUENCE/DESTINATION ADDRESS agora usa altura adaptativa.
+- Endereço curto e poucas entregas: painel menor, preservando mais mapa.
+- Endereço médio/lista média: painel intermediário.
+- Muitos Sequence ou endereço extenso: painel maior apenas quando necessário.
+- Botões de SEGUIR/PAUSAR POSIÇÃO e CONFIRMAR ENTREGA permanecem fixos e acessíveis.
+- A lista de Sequence continua com rolagem própria.
+- Não altera GPS, mapa offline, otimização, agrupamento ou confirmação de entregas.
