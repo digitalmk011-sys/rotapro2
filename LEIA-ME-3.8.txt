@@ -1,0 +1,13 @@
+RotaPro PWA 3.7
+
+Alteração desta versão:
+- Mantida toda a funcionalidade da versão 3.6.
+- A lista de SEQUENCE em endereços com muitas entregas agora possui rolagem própria.
+- A lista fica limitada a uma área fixa para que os botões SEGUIR/PAUSAR POSIÇÃO e CONFIRMAR ENTREGA permaneçam acessíveis.
+- Nenhuma alteração foi feita na lógica de agrupamento, confirmação, GPS, otimização ou mapa offline.
+
+Teste recomendado:
+1. Importar uma planilha com muitas entregas no mesmo endereço.
+2. Abrir o agrupamento.
+3. Rolar a lista de SEQUENCE.
+4. Confirmar que os botões continuam visíveis e acessíveis.
