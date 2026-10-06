@@ -459,3 +459,36 @@ body{
    border-radius:11px!important;
  }
 }
+
+
+/* ===== RotaPro 3.7 — lista de Sequence rolável sem empurrar os comandos ===== */
+.mapModal.detail-open .sequenceInfoRow{
+  align-items:flex-start!important;
+}
+.mapModal.detail-open .sequenceScroll{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  max-height:92px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-right:3px!important;
+  border-radius:10px!important;
+  scrollbar-width:thin!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+.mapModal.detail-open .sequenceScroll::-webkit-scrollbar{width:7px!important}
+.mapModal.detail-open .sequenceScroll::-webkit-scrollbar-thumb{background:#60758e!important;border-radius:8px!important}
+.mapModal.detail-open .sequenceScroll::-webkit-scrollbar-track{background:#17212b!important;border-radius:8px!important}
+.mapModal.detail-open .sequenceScroll .compactSeq{
+  margin:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+@media(max-width:620px){
+ .mapModal.detail-open .sequenceScroll{
+   max-height:82px!important;
+   padding-right:2px!important;
+ }
+ .mapModal.detail-open .sequenceScroll::-webkit-scrollbar{width:6px!important}
+}

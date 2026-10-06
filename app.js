@@ -125,9 +125,11 @@ function showDeliveryDetails(i){
  document.getElementById("deliveryDetails").innerHTML=`
  <div class="compactDetail">
    <button class="detailClose" onclick="showDeliveryDetails(null)">×</button>
-   <div class="compactInfo">
+   <div class="compactInfo sequenceInfoRow">
      <span class="compactLabel">SEQUENCE</span>
-     <b class="compactSeq">${esc(seqs)}</b>
+     <div class="sequenceScroll" aria-label="Lista de Sequence">
+       <b class="compactSeq">${esc(seqs)}</b>
+     </div>
    </div>
    <div class="compactInfo addressCompact">
      <span class="compactLabel">DESTINATION ADDRESS</span>
