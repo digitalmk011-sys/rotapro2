@@ -575,3 +575,52 @@ body{
  .mapModal.detail-open .detailBottomActions .detailFollowBtn,
  .mapModal.detail-open .detailBottomActions .compactConfirm{height:62px!important;min-height:62px!important;font-size:11px!important}
 }
+
+/* RotaPro 3.9 — painel de detalhes sempre acima do mapa, com comandos fixos */
+.mapModal.detail-open #map{
+  bottom:min(48vh,430px)!important;
+  z-index:1!important;
+}
+.mapModal.detail-open .mapBottom{
+  z-index:1500!important;
+  height:min(48vh,430px)!important;
+  max-height:none!important;
+  min-height:205px!important;
+  overflow:hidden!important;
+  pointer-events:auto!important;
+}
+.mapModal.detail-open .deliveryDetails{
+  position:relative!important;
+  z-index:1501!important;
+}
+.mapModal.detail-open .compactDetail{
+  position:relative!important;
+  z-index:1502!important;
+  overflow:hidden!important;
+}
+.mapModal.detail-open .detailBottomActions{
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  z-index:1600!important;
+  margin:0!important;
+}
+@media(max-width:620px){
+  .mapModal.detail-open #map{
+    bottom:min(52vh,430px)!important;
+  }
+  .mapModal.detail-open .mapBottom{
+    height:min(52vh,430px)!important;
+    min-height:205px!important;
+    z-index:1500!important;
+  }
+  .mapModal.detail-open .detailBottomActions{
+    position:absolute!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    z-index:1600!important;
+  }
+}
+.leaflet-control-container{position:relative;z-index:2!important}

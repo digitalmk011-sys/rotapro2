@@ -1,0 +1,14 @@
+RotaPro PWA 3.9
+
+Ajuste pontual sobre a versão 3.8:
+- O painel de detalhes fica acima do mapa.
+- O mapa respeita a altura ocupada pelo painel quando uma entrega está selecionada.
+- Os botões de seguir/pausar posição e confirmar entrega ficam fixos no rodapé do painel.
+- Sequence e endereço continuam podendo rolar dentro das próprias áreas.
+- Não foram alteradas as regras de GPS, agrupamento, confirmação, otimização ou mapa offline.
+
+Teste recomendado:
+1. Abrir um endereço com muitas entregas.
+2. Rolar a lista de Sequence.
+3. Testar endereço longo.
+4. Confirmar que os botões permanecem sempre visíveis e clicáveis.
