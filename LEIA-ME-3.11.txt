@@ -1,0 +1,9 @@
+ROTAPRO PWA 3.11 — Sequence mais acessível
+
+Alteração desta versão:
+- No painel “Corrigir / adicionar Sequence”, o campo para digitar a Sequence foi movido visualmente para ANTES das informações da entrega.
+- A ordem agora fica: [Sequence] [SPX TN / endereço] [editar].
+- Em telas pequenas, o campo permanece sempre visível e acessível, sem alterar as funções de correção, preenchimento automático ou salvamento.
+- Nenhuma função de mapa, GPS, offline, agrupamento, confirmação ou otimização foi alterada.
+
+Base: RotaPro PWA 3.10 — Painel Adaptativo.
