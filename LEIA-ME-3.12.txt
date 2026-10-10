@@ -1,0 +1,10 @@
+ROTAPRO PWA 3.12 — Próxima entrega manual fixa
+
+Alteração desta versão:
+- O app continua indicando automaticamente a próxima entrega quando não há escolha manual.
+- Ao selecionar outra entrega no mapa ou na lista, ela permanece como próxima durante o deslocamento.
+- A posição GPS pode continuar atualizando normalmente, mas não troca a entrega escolhida.
+- A escolha manual é liberada quando a entrega selecionada é confirmada; então o app volta a indicar a próxima pendente automaticamente.
+- A otimização da rota e a restauração da ordem original não apagam uma escolha manual ainda pendente.
+
+Mantidos os demais recursos da versão 3.11, incluindo mapa offline, agrupamento de endereços, painel adaptativo e correção de Sequence.
