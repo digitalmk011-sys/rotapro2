@@ -1,0 +1,10 @@
+RotaPro 3.13 - Destino manual persistente
+
+- Toque no marcador fixa a entrega selecionada.
+- O GPS atualiza posicao e caminho sem substituir a escolha manual.
+- A escolha persiste mesmo se o PWA for fechado ou recarregado.
+- A escolha e liberada ao confirmar a entrega selecionada.
+- Depois da confirmacao a proxima pendente e selecionada automaticamente.
+- Cache do app atualizado para a versao 41.
+
+Teste recomendado: escolha uma entrega distante, desloque-se perto de outras entregas, feche e reabra o aplicativo, confirme a escolhida e verifique a proxima.
