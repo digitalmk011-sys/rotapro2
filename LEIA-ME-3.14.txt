@@ -1,0 +1,5 @@
+RotaPro 3.14 — Seleção automática fixa
+
+A primeira seleção automática permanece fixa mesmo durante deslocamento GPS. Só muda após confirmação da entrega ou seleção manual de outra. Escolha automática persiste após reabrir o aplicativo.
+
+Atualize todos os arquivos no GitHub Pages e recarregue o PWA.
