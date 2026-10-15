@@ -1,0 +1,8 @@
+RotaPro 3.15 — Cadastro Manual Modernizado
+Base: versão 3.14.
+- Campo Sequence compacto e obrigatório, com bloqueio de duplicação.
+- Destination Address amplo e obrigatório.
+- Nome e telefone opcionais.
+- Inclusão manual salva Sequence imediatamente, sem abrir corretor.
+- Importação Excel/CSV permanece disponível em seção separada.
+- Cache PWA atualizado.

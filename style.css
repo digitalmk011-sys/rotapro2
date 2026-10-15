@@ -686,3 +686,18 @@ body{
   .mapModal.detail-open.detail-size-large .compactAddress{max-height:88px!important}
   .mapModal.detail-open .detailBottomActions{left:7px!important;right:7px!important;bottom:7px!important}
 }
+
+/* RotaPro 3.15 — formulário manual premium responsivo */
+.manualDeliveryCard{padding:0!important;overflow:hidden;border-radius:23px!important;background:linear-gradient(165deg,#fff 0%,#f6faff 100%)!important;border:1px solid #dce9fa!important;box-shadow:0 14px 36px #0a35751b!important}
+.manualCardHead{display:flex;align-items:center;gap:13px;padding:20px 19px 17px;background:linear-gradient(115deg,#09294e,#0750a1 75%,#078dd8);color:#fff}
+.manualCardIcon{display:grid;place-items:center;flex:none;width:49px;height:49px;border-radius:15px;background:linear-gradient(135deg,#0eb9ff,#0866ff);box-shadow:inset 0 2px 2px #ffffff7a,0 7px 16px #001e5680;font-size:31px;font-weight:700}
+.manualCardHead h2{font-size:22px;margin:0 0 4px;color:#fff}.manualCardHead p{font-size:12px;line-height:1.4;color:#c8e6ff;margin:0}
+.manualEntryGrid{display:grid;grid-template-columns:minmax(0,112px) minmax(0,1fr);gap:14px 12px;padding:20px 19px 13px}
+.manualField{display:flex;flex-direction:column;gap:7px;min-width:0}.manualField span{font-size:12px;font-weight:800;color:#294466}.manualField em{font-style:normal;color:#0c75ec}.manualField small{font-weight:400;color:#7588a0}
+.manualField input,.manualField textarea{display:block;width:100%;min-width:0;border:1px solid #cfdded!important;background:#fff!important;border-radius:13px!important;padding:13px 14px!important;font-size:16px!important;color:#102c4f!important;outline:none;box-shadow:0 2px 6px #0b376c0b;transition:border-color .2s,box-shadow .2s}
+.manualField input:focus,.manualField textarea:focus{border-color:#078dff!important;box-shadow:0 0 0 3px #0a8fff20!important}.manualField input::placeholder,.manualField textarea::placeholder{color:#93a1b3}
+.manualField input{height:49px}.manualSeqInput{height:49px!important;font-weight:800!important;text-align:center!important;background:#edf5ff!important;padding:9px!important;letter-spacing:.2px}
+.manualAddressField,.manualPhoneField{grid-column:1/-1}.manualAddressField textarea{resize:vertical;min-height:93px;line-height:1.5;font-family:inherit}
+.manualSubmit{display:flex;width:calc(100% - 38px);margin:3px 19px 21px;min-height:54px;border-radius:15px!important;background:linear-gradient(135deg,#078dff,#0757dd)!important;box-shadow:0 7px 0 #0640a2,0 11px 20px #0669d52b;font-size:16px!important;letter-spacing:.1px}.manualSubmit:active{transform:translateY(4px);box-shadow:0 3px 0 #0640a2}
+.manualImportArea{border-top:1px solid #dce8f7;padding:17px 19px 20px;background:#f3f8ff}.manualImportHeading{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}.manualImportHeading b{font-size:15px;color:#183a65}.manualImportHeading small{font-size:12px;color:#6d8097}.manualImportArea .row{gap:9px}.manualImportArea .row .file,.manualImportArea .row button{min-height:46px;border-radius:12px}.manualImportArea .hint{line-height:1.55;margin-bottom:0}
+@media(max-width:430px){.manualEntryGrid{grid-template-columns:100px minmax(0,1fr);padding:17px 15px 12px;gap:12px 10px}.manualCardHead{padding:18px 15px}.manualCardHead h2{font-size:20px}.manualSubmit{width:calc(100% - 30px);margin-left:15px;margin-right:15px}.manualImportArea{padding:16px 15px}.manualField input,.manualField textarea{padding:11px!important}.manualSeqInput{padding:8px!important}}

@@ -30,7 +30,17 @@
 
 <section class="card"><h2>Entregas</h2><div class="routeTabs"><button id="routeTab" class="tab active">Rota otimizada</button><button id="originalTab" class="tab">Ordem por Sequence</button></div><div id="list"></div></section>
 
-<section id="importSection" class="card"><h2>Importar entregas</h2><input id="client" placeholder="Nome/identificação do cliente"><input id="address" placeholder="Endereço completo"><input id="phone" placeholder="Telefone (opcional)"><button onclick="addDelivery()">Adicionar entrega</button><div class="row"><label class="file">📊 Importar Excel/CSV<input id="file" type="file" accept=".xlsx,.xls,.csv"></label><button class="secondary" onclick="downloadTemplate()">📄 Modelo Excel</button><button class="secondary" onclick="clearAll()">Limpar</button></div><p class="hint">Planilha compatível: AT ID, <b>Sequence</b>, SPX TN, <b><b>Destination Address</b>, Bairro, City, CEP, Latitude e Longitude. <b>Stop não é usado para identificar a entrega.</b></p></section>
+<section id="importSection" class="card manualDeliveryCard">
+  <div class="manualCardHead"><span class="manualCardIcon">＋</span><div><h2>Adicionar entrega</h2><p>Cadastre uma entrega manualmente, com sua Sequence e endereço.</p></div></div>
+  <div class="manualEntryGrid">
+    <label class="manualField manualSeqField"><span>Sequence <em>*</em></span><input id="manualSequence" class="manualSeqInput" type="text" inputmode="text" autocapitalize="characters" placeholder="Ex.: 25" autocomplete="off"></label>
+    <label class="manualField manualClientField"><span>Nome / identificação <small>(opcional)</small></span><input id="client" placeholder="Cliente ou código" autocomplete="off"></label>
+    <label class="manualField manualAddressField"><span>Destination Address <em>*</em></span><textarea id="address" rows="3" placeholder="Rua, número, complemento, bairro, cidade e CEP"></textarea></label>
+    <label class="manualField manualPhoneField"><span>Telefone <small>(opcional)</small></span><input id="phone" type="tel" placeholder="(00) 00000-0000"></label>
+  </div>
+  <button class="manualSubmit" onclick="addDelivery()">＋ Adicionar entrega</button>
+  <div class="manualImportArea"><div class="manualImportHeading"><b>Importar planilha</b><small>Para cadastrar várias entregas de uma vez</small></div><div class="row"><label class="file">📊 Importar Excel/CSV<input id="file" type="file" accept=".xlsx,.xls,.csv"></label><button class="secondary" onclick="downloadTemplate()">📄 Modelo Excel</button><button class="secondary" onclick="clearAll()">Limpar</button></div><p class="hint">Planilha compatível: AT ID, <b>Sequence</b>, SPX TN, <b>Destination Address</b>, Bairro, City, CEP, Latitude e Longitude. <b>Stop não é usado para identificar a entrega.</b></p></div>
+</section>
 </main>
 <nav><button onclick="window.scrollTo({top:0,behavior:'smooth'})">📋<small>Entregas</small></button><button id="navMap">🗺️<small>Mapa</small></button><button id="navOptimize">🧭<small>Otimizar</small></button><button onclick="exportCSV()">📤<small>Exportar</small></button></nav>
 
