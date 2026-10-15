@@ -1,0 +1,1 @@
+RotaPro 3.19 — Ordem progressiva por proximidade. Ate 74 entregas usa matriz OSRM de tempo viario e escolhe a proxima parada mais rapida a partir da anterior, sem 2-opt. Para rotas maiores ou falha de rede usa proximidade geografica; NAO considera transito em tempo real. A ordem fica fixa ate nova otimizacao. A escolha manual e a Sequence original permanecem preservadas.

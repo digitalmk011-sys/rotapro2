@@ -455,16 +455,9 @@ async function fastestRoadOrder(start, left){
  const remaining=new Set(Array.from({length:n-1},(_,i)=>i+1));const order=[0];
  while(remaining.size){let best=null,bestCost=Infinity;for(const i of remaining){const c=cost(order[order.length-1],i);if(c<bestCost){best=i;bestCost=c}}if(best===null||bestCost>=1e12)throw new Error("Pontos inacessíveis");order.push(best);remaining.delete(best)}
  const total=arr=>arr.slice(1).reduce((sum,node,i)=>sum+cost(arr[i],node),0);
- // 2-opt direcionado: a mão das ruas pode tornar A→B diferente de B→A.
- let bestTotal=total(order),changed=true,passes=0;
- while(changed&&passes++<9){changed=false;let bestI=-1,bestJ=-1;
-  for(let i=1;i<order.length-1;i++)for(let j=i+1;j<order.length;j++){
-   const candidate=order.slice();candidate.splice(i,j-i+1,...order.slice(i,j+1).reverse());
-   const score=total(candidate);
-   if(score+0.1<bestTotal){bestTotal=score;bestI=i;bestJ=j}
-  }
-  if(bestI>=0){order.splice(bestI,bestJ-bestI+1,...order.slice(bestI,bestJ+1).reverse());changed=true}
- }
+ // Ordem progressiva: não inverter blocos com 2-opt. Cada parada é a mais rápida
+ // a partir da parada imediatamente anterior, mantendo um trajeto previsível.
+ const bestTotal=total(order);
  return {planned:order.slice(1).map(i=>left[i-1]),seconds:bestTotal};
 }
 async function optimizeRoute(){
@@ -483,23 +476,19 @@ async function optimizeRoute(){
    const result=await fastestRoadOrder(start,left);
    planned=result.planned;estimatedSeconds=result.seconds;roadOptimized=true;
  }catch(matrixError){
-   try{
-     // Para rotas muito grandes, utiliza a otimização viária OSRM Trip.
-     const points=[start,...left.map(coords)];
-     const path=points.map(c=>`${c[1]},${c[0]}`).join(";");
-     const r=await fetch(`${OSRM}/trip/v1/driving/${path}?source=first&roundtrip=false&overview=false&steps=false`);
-     if(!r.ok)throw new Error("trip");
-     const j=await r.json();
-     if(j.code!=="Ok"||!Array.isArray(j.waypoints)||j.waypoints.length!==points.length)throw new Error("waypoints");
-     planned=j.waypoints.map((w,inputIndex)=>({w,inputIndex})).filter(x=>x.inputIndex>0&&Number.isInteger(x.w.waypoint_index)).sort((a,b)=>a.w.waypoint_index-b.w.waypoint_index).map(x=>left[x.inputIndex-1]);
-     if(planned.length!==left.length||new Set(planned).size!==left.length)throw new Error("route incomplete");
-     roadOptimized=true;estimatedSeconds=j.trips?.[0]?.duration||null;
-   }catch(e){
-     // Último recurso offline: proximidade geográfica (não é estimativa de tempo).
-     let pool=left.slice(),from=start;
-     while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){const dist=haversine(from,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}const d=pool.splice(best,1)[0];planned.push(d);from=coords(d)}
+   // Em rotas grandes ou sem serviço de matriz, usar vizinho geográfico
+   // progressivo, sem reordenar a rota globalmente via OSRM Trip.
+   let pool=left.slice(),from=start;
+   while(pool.length){
+     let best=0,bestDist=Infinity;
+     for(let i=0;i<pool.length;i++){
+       const dist=haversine(from,coords(pool[i]));
+       if(dist<bestDist){bestDist=dist;best=i}
+     }
+     const d=pool.splice(best,1)[0];planned.push(d);from=coords(d);
    }
  }
+
  // A Sequence é intocável; somente routeOrder define a posição visual da lista.
  deliveries.forEach(d=>{if(!d.done)d.routeOrder=""});
  planned.forEach((d,i)=>{d.routeOrder=i+1});
@@ -513,8 +502,8 @@ async function optimizeRoute(){
  sortMode="route";
  document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");
  save();openMap();
- if(roadOptimized){toast("Rota por tempo de direção calculada — preparando mapa offline...");const offlineReady=await cacheOptimizedRoadLegs();toast(offlineReady?"Rota pronta! Lista na ordem de entrega e mapa offline preparado":"Rota pronta! Lista na ordem de entrega; mapa offline parcial")}
- else toast("Lista ordenada pela proximidade do GPS — serviço de ruas indisponível");
+ if(roadOptimized){toast("Rota progressiva por tempo entre paradas — preparando mapa offline...");const offlineReady=await cacheOptimizedRoadLegs();toast(offlineReady?"Rota pronta! Lista na ordem de entrega e mapa offline preparado":"Rota pronta! Lista na ordem de entrega; mapa offline parcial")}
+ else toast("Rota progressiva por proximidade geográfica; sem dados de trânsito ou tempos viários");
 }
 
 function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");if(manualNext!==null&&deliveries[manualNext]?.done)manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}
@@ -575,7 +564,7 @@ document.getElementById("homeSequenceBtn")?.addEventListener("click",openSequenc
 document.getElementById("homeListBtn")?.addEventListener("click",()=>document.getElementById("list")?.scrollIntoView({behavior:"smooth",block:"start"}));
 document.getElementById("homeManualBtn")?.addEventListener("click",()=>document.getElementById("importSection")?.scrollIntoView({behavior:"smooth",block:"center"}));
 document.getElementById("homeClearBtn")?.addEventListener("click",clearAll);
-document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=46");updateFollowButton();render();
+document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=47");updateFollowButton();render();
 
 // RotaPro 2.4 - instalação PWA
 let deferredInstallPrompt=null;
