@@ -1,0 +1,6 @@
+RotaPro 3.20 — planejamento por regiões e destino final opcional.
+Começa no GPS; agrupa entregas geograficamente em blocos aproximados de 850 m; percorre os blocos por proximidade e leva em conta o destino final quando informado.
+A Sequence original permanece. A escolha automática/manual permanece fixa até a confirmação.
+A estratégia é heurística por proximidade geográfica; não usa trânsito ao vivo nem garante rota globalmente ótima.
+Para outro município, use como destino final o ponto de saída desejado.
+Requer internet para localizar endereço final por nome; também aceita coordenadas latitude,longitude.

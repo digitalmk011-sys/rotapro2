@@ -460,50 +460,79 @@ async function fastestRoadOrder(start, left){
  const bestTotal=total(order);
  return {planned:order.slice(1).map(i=>left[i-1]),seconds:bestTotal};
 }
-async function optimizeRoute(){
- const left=pending().filter(d=>coords(d));
- if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}
- // A rota deve sair da localização do entregador, nunca da Sequence 1.
- let start=currentPosition||lastCompletedCoord;
- if(!currentPosition&&navigator.geolocation){
-  try{const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:10000,maximumAge:15000}));currentPosition=[pos.coords.latitude,pos.coords.longitude];start=currentPosition;}catch(e){}
- }
- if(!start){alert("Ative o GPS e toque novamente em Otimizar. Precisamos da sua localização para escolher a primeira entrega mais próxima, independentemente da Sequence.");return}
- toast("Calculando a melhor ordem de entregas a partir da sua localização...");
- // Os índices da resposta OSRM correspondem às posições de entrada; waypoint_index é a ordem otimizada.
- let planned=[];let roadOptimized=false;let estimatedSeconds=null;
- try{
-   const result=await fastestRoadOrder(start,left);
-   planned=result.planned;estimatedSeconds=result.seconds;roadOptimized=true;
- }catch(matrixError){
-   // Em rotas grandes ou sem serviço de matriz, usar vizinho geográfico
-   // progressivo, sem reordenar a rota globalmente via OSRM Trip.
-   let pool=left.slice(),from=start;
-   while(pool.length){
-     let best=0,bestDist=Infinity;
-     for(let i=0;i<pool.length;i++){
-       const dist=haversine(from,coords(pool[i]));
-       if(dist<bestDist){bestDist=dist;best=i}
+// A divisão geográfica agrupa paradas em blocos compactos. O custo considera
+// distância entre blocos, desvio para o destino final e o risco de voltar atrás.
+function regionalPlan(start,left,end){
+ const remaining=left.slice(),clusters=[];
+ const radiusKm=0.85;
+ while(remaining.length){
+   const seed=remaining.shift(),members=[seed];
+   let changed=true;
+   while(changed){changed=false;for(let i=remaining.length-1;i>=0;i--){
+     if(members.some(d=>haversine(coords(d),coords(remaining[i]))<=radiusKm)){
+       members.push(remaining.splice(i,1)[0]);changed=true;
      }
-     const d=pool.splice(best,1)[0];planned.push(d);from=coords(d);
+   }}
+   const center=[members.reduce((v,d)=>v+coords(d)[0],0)/members.length,members.reduce((v,d)=>v+coords(d)[1],0)/members.length];
+   clusters.push({members,center});
+ }
+ const result=[];let from=start;
+ // Considera a saída no custo da ordem dos blocos, sem sacrificar excessivamente
+ // a proximidade do bloco atual. Sem destino final, prioriza a região mais próxima.
+ while(clusters.length){
+   let pick=0,best=Infinity;
+   clusters.forEach((c,i)=>{
+     const near=Math.min(...c.members.map(d=>haversine(from,coords(d))));
+     const toward=end?Math.max(0,haversine(c.center,end)-haversine(from,end)):0;
+     const cost=near+0.42*toward;
+     if(cost<best){best=cost;pick=i}
+   });
+   const block=clusters.splice(pick,1)[0];
+   // Ordenação local: entra pela entrega mais próxima e visita todo o bloco.
+   while(block.members.length){
+     let k=0,score=Infinity;
+     block.members.forEach((d,i)=>{
+       const dist=haversine(from,coords(d));
+       const endBias=end?0.13*haversine(coords(d),end):0;
+       const v=dist+endBias;
+       if(v<score){score=v;k=i}
+     });
+     const next=block.members.splice(k,1)[0];result.push(next);from=coords(next);
    }
  }
-
- // A Sequence é intocável; somente routeOrder define a posição visual da lista.
- deliveries.forEach(d=>{if(!d.done)d.routeOrder=""});
+ return {planned:result,blocks:result.length?undefined:0};
+}
+async function resolveRouteDestination(text){
+ const value=String(text||'').trim();if(!value)return null;
+ // Endereço explícito, nunca inferido da localização do usuário.
+ const coordsMatch=value.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,;]\s*(-?\d+(?:\.\d+)?)\s*$/);
+ if(coordsMatch){const lat=Number(coordsMatch[1]),lon=Number(coordsMatch[2]);if(Math.abs(lat)<=90&&Math.abs(lon)<=180)return [lat,lon]}
+ const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),12000);
+ try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(value),{signal:ctrl.signal});if(!r.ok)throw Error('Busca indisponível');const j=await r.json();if(!j.length)throw Error('Endereço não localizado');return [Number(j[0].lat),Number(j[0].lon)]}finally{clearTimeout(timer)}
+}
+async function optimizeRoute(){
+ const left=pending().filter(d=>coords(d));
+ if(!left.length){alert('Não há entregas pendentes com latitude/longitude.');return}
+ let start=currentPosition||lastCompletedCoord;
+ if(!currentPosition&&navigator.geolocation){try{const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:10000,maximumAge:15000}));currentPosition=[pos.coords.latitude,pos.coords.longitude];start=currentPosition}catch(e){}}
+ if(!start){alert('Ative o GPS para otimizar a partir da sua localização.');return}
+ const mode=document.getElementById('routePlanMode')?.value||'free';
+ const endText=mode==='free'?'':(document.getElementById('routePlanEnd')?.value||'').trim();
+ let end=null;
+ if(endText){toast('Localizando destino final...');try{end=await resolveRouteDestination(endText)}catch(e){alert('Não foi possível localizar o destino final. Confira o endereço e tente novamente, ou deixe o campo vazio.');return}}
+ toast('Organizando blocos de entregas para evitar retornos...');
+ const {planned}=regionalPlan(start,left,end);
+ deliveries.forEach(d=>{if(!d.done)d.routeOrder=''});
  planned.forEach((d,i)=>{d.routeOrder=i+1});
- // Nova otimização reinicia a escolha automática pela PRIMEIRA parada da nova rota.
- // A escolha manual explícita continua protegida.
  autoNext=null;
  if(manualNext!==null&&(!deliveries[manualNext]||deliveries[manualNext].done)){manualNext=null;persistManualChoice()}
- if(manualNext===null&&planned.length){autoNext=deliveries.indexOf(planned[0]);selectedDelivery=autoNext;}
+ if(manualNext===null&&planned.length){autoNext=deliveries.indexOf(planned[0]);selectedDelivery=autoNext}
  else if(manualNext!==null)selectedDelivery=manualNext;
- persistAutoChoice();
- sortMode="route";
- document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");
+ persistAutoChoice();sortMode='route';
+ document.getElementById('routeTab').classList.add('active');document.getElementById('originalTab').classList.remove('active');
+ localStorage.setItem('rotapro_region_mode',mode);localStorage.setItem('rotapro_region_end',endText);
  save();openMap();
- if(roadOptimized){toast("Rota progressiva por tempo entre paradas — preparando mapa offline...");const offlineReady=await cacheOptimizedRoadLegs();toast(offlineReady?"Rota pronta! Lista na ordem de entrega e mapa offline preparado":"Rota pronta! Lista na ordem de entrega; mapa offline parcial")}
- else toast("Rota progressiva por proximidade geográfica; sem dados de trânsito ou tempos viários");
+ toast('Rota por regiões pronta! Lista numerada; escolha de entrega preservada.');
 }
 
 function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");if(manualNext!==null&&deliveries[manualNext]?.done)manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}
@@ -564,7 +593,7 @@ document.getElementById("homeSequenceBtn")?.addEventListener("click",openSequenc
 document.getElementById("homeListBtn")?.addEventListener("click",()=>document.getElementById("list")?.scrollIntoView({behavior:"smooth",block:"start"}));
 document.getElementById("homeManualBtn")?.addEventListener("click",()=>document.getElementById("importSection")?.scrollIntoView({behavior:"smooth",block:"center"}));
 document.getElementById("homeClearBtn")?.addEventListener("click",clearAll);
-document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=47");updateFollowButton();render();
+document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=48");updateFollowButton();render();
 
 // RotaPro 2.4 - instalação PWA
 let deferredInstallPrompt=null;
@@ -588,3 +617,6 @@ function setupInstallApp(){
  window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;btn.hidden=true;toast('RotaPro instalado na tela inicial.');});
 }
 setupInstallApp();
+
+// Preferências locais de planejamento, sem alterar a Sequence original.
+(function(){const mode=document.getElementById('routePlanMode'),end=document.getElementById('routePlanEnd'),label=document.getElementById('routePlanEndLabel');if(!mode||!end)return;mode.value=localStorage.getItem('rotapro_region_mode')||'home';end.value=localStorage.getItem('rotapro_region_end')||'';function refresh(){const outside=mode.value==='outside',free=mode.value==='free';end.hidden=free;label.hidden=free;label.textContent=outside?'Endereço de saída / retorno':'Endereço de casa (destino final)';end.placeholder=outside?'Saída da cidade ou ponto de retorno':'Rua, número, cidade e estado';localStorage.setItem('rotapro_region_mode',mode.value)}mode.addEventListener('change',refresh);end.addEventListener('change',()=>localStorage.setItem('rotapro_region_end',end.value));document.getElementById('routePlanOptimize')?.addEventListener('click',optimizeRoute);refresh()})();
