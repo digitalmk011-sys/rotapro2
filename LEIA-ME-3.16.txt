@@ -1,0 +1,3 @@
+RotaPro 3.16 — Ordem de entrega otimizada
+
+A otimização inicia na localização GPS atual, independente da Sequence. A lista de entregas fica na ordem planejada (1ª ENTREGA, 2ª ENTREGA...), mantendo a Sequence original em cada pacote. A escolha automática fica travada na primeira entrega da rota; a seleção manual continua respeitada. Se GPS indisponível, solicita ativação. OSRM Trip quando disponível, fallback por proximidade geográfica.
