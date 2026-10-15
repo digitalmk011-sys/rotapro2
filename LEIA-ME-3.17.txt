@@ -1,0 +1,3 @@
+RotaPro 3.17 — Otimização por tempo de direção
+
+Até 74 entregas com coordenadas: consulta a matriz de tempo pelas ruas (OSRM Table), calcula caminho aberto a partir do GPS e melhora com 2-opt. Para rotas maiores: OSRM Trip. Offline/serviço indisponível: fallback por proximidade. A rota permanece na ordem planejada até nova otimização; Sequence original e destino fixo manual/automático preservados. Não considera trânsito em tempo real.

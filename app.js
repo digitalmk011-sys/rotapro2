@@ -425,6 +425,40 @@ async function drawRoadRoute(line,meta={}){
    else toast("Internet indisponível — trecho de rua ainda não salvo. O GPS continua funcionando.");
  }
 }
+// Planejamento por TEMPO de direção: matriz viária OSRM + melhorias 2-opt.
+// Ponto 0 é sempre a localização inicial; o percurso é aberto (não retorna à origem).
+async function fastestRoadOrder(start, left){
+ const points=[start,...left.map(coords)];
+ // Limite conservador para não sobrecarregar o serviço público de demonstração.
+ if(points.length>75)throw new Error("Matriz grande: usar OSRM Trip");
+ const path=points.map(c=>`${c[1]},${c[0]}`).join(";");
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),18000);
+ let matrix;
+ try{
+  const r=await fetch(`${OSRM}/table/v1/driving/${path}?annotations=duration`,{signal:controller.signal});
+  if(!r.ok)throw new Error("Tabela indisponível");
+  const data=await r.json();if(data.code!=="Ok"||!Array.isArray(data.durations))throw new Error("Tabela inválida");
+  matrix=data.durations;
+ }finally{clearTimeout(timer)}
+ const n=points.length;
+ if(matrix.length!==n||matrix.some(row=>!Array.isArray(row)||row.length!==n))throw new Error("Matriz incompleta");
+ const cost=(a,b)=>Number.isFinite(matrix[a][b])?matrix[a][b]:1e12;
+ // Vizinho mais rápido por duração real nas ruas, e não distância em linha reta.
+ const remaining=new Set(Array.from({length:n-1},(_,i)=>i+1));const order=[0];
+ while(remaining.size){let best=null,bestCost=Infinity;for(const i of remaining){const c=cost(order[order.length-1],i);if(c<bestCost){best=i;bestCost=c}}if(best===null||bestCost>=1e12)throw new Error("Pontos inacessíveis");order.push(best);remaining.delete(best)}
+ const total=arr=>arr.slice(1).reduce((sum,node,i)=>sum+cost(arr[i],node),0);
+ // 2-opt direcionado: a mão das ruas pode tornar A→B diferente de B→A.
+ let bestTotal=total(order),changed=true,passes=0;
+ while(changed&&passes++<9){changed=false;let bestI=-1,bestJ=-1;
+  for(let i=1;i<order.length-1;i++)for(let j=i+1;j<order.length;j++){
+   const candidate=order.slice();candidate.splice(i,j-i+1,...order.slice(i,j+1).reverse());
+   const score=total(candidate);
+   if(score+0.1<bestTotal){bestTotal=score;bestI=i;bestJ=j}
+  }
+  if(bestI>=0){order.splice(bestI,bestJ-bestI+1,...order.slice(bestI,bestJ+1).reverse());changed=true}
+ }
+ return {planned:order.slice(1).map(i=>left[i-1]),seconds:bestTotal};
+}
 async function optimizeRoute(){
  const left=pending().filter(d=>coords(d));
  if(!left.length){alert("Não há entregas pendentes com latitude/longitude.");return}
@@ -436,21 +470,27 @@ async function optimizeRoute(){
  if(!start){alert("Ative o GPS e toque novamente em Otimizar. Precisamos da sua localização para escolher a primeira entrega mais próxima, independentemente da Sequence.");return}
  toast("Calculando a melhor ordem de entregas a partir da sua localização...");
  // Os índices da resposta OSRM correspondem às posições de entrada; waypoint_index é a ordem otimizada.
- let planned=[];let roadOptimized=false;
+ let planned=[];let roadOptimized=false;let estimatedSeconds=null;
  try{
-   const points=[start,...left.map(coords)];
-   const path=points.map(c=>`${c[1]},${c[0]}`).join(";");
-   const r=await fetch(`${OSRM}/trip/v1/driving/${path}?source=first&roundtrip=false&overview=false&steps=false`);
-   if(!r.ok)throw new Error("trip");
-   const j=await r.json();
-   if(j.code!=="Ok"||!Array.isArray(j.waypoints)||j.waypoints.length!==points.length)throw new Error("waypoints");
-   planned=j.waypoints.map((w,inputIndex)=>({w,inputIndex})).filter(x=>x.inputIndex>0&&Number.isInteger(x.w.waypoint_index)).sort((a,b)=>a.w.waypoint_index-b.w.waypoint_index).map(x=>left[x.inputIndex-1]);
-   if(planned.length!==left.length||new Set(planned).size!==left.length)throw new Error("route incomplete");
-   roadOptimized=true;
- }catch(e){
-   // Sem roteamento por ruas, preserva o início no GPS usando proximidade geográfica.
-   let pool=left.slice(),from=start;
-   while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){const dist=haversine(from,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}const d=pool.splice(best,1)[0];planned.push(d);from=coords(d)}
+   const result=await fastestRoadOrder(start,left);
+   planned=result.planned;estimatedSeconds=result.seconds;roadOptimized=true;
+ }catch(matrixError){
+   try{
+     // Para rotas muito grandes, utiliza a otimização viária OSRM Trip.
+     const points=[start,...left.map(coords)];
+     const path=points.map(c=>`${c[1]},${c[0]}`).join(";");
+     const r=await fetch(`${OSRM}/trip/v1/driving/${path}?source=first&roundtrip=false&overview=false&steps=false`);
+     if(!r.ok)throw new Error("trip");
+     const j=await r.json();
+     if(j.code!=="Ok"||!Array.isArray(j.waypoints)||j.waypoints.length!==points.length)throw new Error("waypoints");
+     planned=j.waypoints.map((w,inputIndex)=>({w,inputIndex})).filter(x=>x.inputIndex>0&&Number.isInteger(x.w.waypoint_index)).sort((a,b)=>a.w.waypoint_index-b.w.waypoint_index).map(x=>left[x.inputIndex-1]);
+     if(planned.length!==left.length||new Set(planned).size!==left.length)throw new Error("route incomplete");
+     roadOptimized=true;estimatedSeconds=j.trips?.[0]?.duration||null;
+   }catch(e){
+     // Último recurso offline: proximidade geográfica (não é estimativa de tempo).
+     let pool=left.slice(),from=start;
+     while(pool.length){let best=0,bestDist=Infinity;for(let i=0;i<pool.length;i++){const dist=haversine(from,coords(pool[i]));if(dist<bestDist){bestDist=dist;best=i}}const d=pool.splice(best,1)[0];planned.push(d);from=coords(d)}
+   }
  }
  // A Sequence é intocável; somente routeOrder define a posição visual da lista.
  deliveries.forEach(d=>{if(!d.done)d.routeOrder=""});
@@ -465,7 +505,7 @@ async function optimizeRoute(){
  sortMode="route";
  document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");
  save();openMap();
- if(roadOptimized){toast("Ordem da rota calculada — preparando navegação offline...");const offlineReady=await cacheOptimizedRoadLegs();toast(offlineReady?"Rota pronta! Lista na ordem de entrega e mapa offline preparado":"Rota pronta! Lista na ordem de entrega; mapa offline parcial")}
+ if(roadOptimized){toast("Rota por tempo de direção calculada — preparando mapa offline...");const offlineReady=await cacheOptimizedRoadLegs();toast(offlineReady?"Rota pronta! Lista na ordem de entrega e mapa offline preparado":"Rota pronta! Lista na ordem de entrega; mapa offline parcial")}
  else toast("Lista ordenada pela proximidade do GPS — serviço de ruas indisponível");
 }
 
