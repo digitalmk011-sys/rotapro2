@@ -1,0 +1,1 @@
+RotaPro 3.18 — segue a ordem otimizada na escolha automática. Ao selecionar outra entrega manualmente, ela fica fixa até confirmação; depois o app retoma a primeira entrega pendente na ordem otimizada. A Sequence original não é modificada.
