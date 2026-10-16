@@ -462,45 +462,63 @@ async function fastestRoadOrder(start, left){
 }
 // A divisão geográfica agrupa paradas em blocos compactos. O custo considera
 // distância entre blocos, desvio para o destino final e o risco de voltar atrás.
-function regionalPlan(start,left,end){
- const remaining=left.slice(),clusters=[];
- const radiusKm=0.85;
- while(remaining.length){
-   const seed=remaining.shift(),members=[seed];
-   let changed=true;
-   while(changed){changed=false;for(let i=remaining.length-1;i>=0;i--){
-     if(members.some(d=>haversine(coords(d),coords(remaining[i]))<=radiusKm)){
-       members.push(remaining.splice(i,1)[0]);changed=true;
-     }
-   }}
-   const center=[members.reduce((v,d)=>v+coords(d)[0],0)/members.length,members.reduce((v,d)=>v+coords(d)[1],0)/members.length];
-   clusters.push({members,center});
- }
- const result=[];let from=start;
- // Considera a saída no custo da ordem dos blocos, sem sacrificar excessivamente
- // a proximidade do bloco atual. Sem destino final, prioriza a região mais próxima.
- while(clusters.length){
-   let pick=0,best=Infinity;
-   clusters.forEach((c,i)=>{
-     const near=Math.min(...c.members.map(d=>haversine(from,coords(d))));
-     const toward=end?Math.max(0,haversine(c.center,end)-haversine(from,end)):0;
-     const cost=near+0.42*toward;
-     if(cost<best){best=cost;pick=i}
-   });
-   const block=clusters.splice(pick,1)[0];
-   // Ordenação local: entra pela entrega mais próxima e visita todo o bloco.
-   while(block.members.length){
-     let k=0,score=Infinity;
-     block.members.forEach((d,i)=>{
-       const dist=haversine(from,coords(d));
-       const endBias=end?0.13*haversine(coords(d),end):0;
-       const v=dist+endBias;
-       if(v<score){score=v;k=i}
-     });
-     const next=block.members.splice(k,1)[0];result.push(next);from=coords(next);
+// Rota 3.21: proximidade como critério principal, com custo de retorno e barreiras.
+// A matriz viária é opcional: não inclui trânsito ao vivo.
+async function roadCostMatrix(start,left){
+ if(left.length>73)return null;
+ const points=[start,...left.map(coords)];
+ const path=points.map(p=>`${p[1]},${p[0]}`).join(';');
+ const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),14000);
+ try{
+  const r=await fetch(`${OSRM}/table/v1/driving/${path}?annotations=duration`,{signal:ctrl.signal});
+  if(!r.ok)return null;
+  const j=await r.json();
+  return j.code==='Ok'&&j.durations?.length===points.length?j.durations:null;
+ }catch(e){return null}finally{clearTimeout(timer)}
+}
+function regionalPlan(start,left,end,matrix){
+ const n=left.length,points=[start,...left.map(coords)];
+ const distance=(a,b)=>haversine(points[a],points[b]);
+ // Road time is preferred whenever the road network can be queried.
+ const cost=(a,b)=>{
+   const road=matrix?.[a]?.[b];
+   return Number.isFinite(road)?road/85:distance(a,b); // normalized time (minutes / 85)
+ };
+ // Build compact neighborhoods around fixed seed points; unlike single-link
+ // clustering, a long chain of adjacent points cannot swallow a whole city.
+ const assigned=new Set(),blocks=[];
+ const radius=.62;
+ for(let i=1;i<=n;i++){
+   if(assigned.has(i))continue;
+   const members=[i];assigned.add(i);
+   for(let j=i+1;j<=n;j++){
+     if(!assigned.has(j)&&distance(i,j)<=radius){members.push(j);assigned.add(j)}
    }
+   blocks.push(members);
  }
- return {planned:result,blocks:result.length?undefined:0};
+ const visited=new Set(),result=[];let at=0,activeBlock=null;
+ const remaining=()=>Array.from({length:n},(_,i)=>i+1).filter(i=>!visited.has(i));
+ while(visited.size<n){
+   const remain=remaining();
+   // Nearby deliveries dominate; staying in a region is only a small bonus.
+   // A point on the path to a further stop is therefore not skipped.
+   const candidates=remain.map(i=>{
+     const c=cost(at,i);
+     const block=blocks.findIndex(b=>b.includes(i));
+     const blockBonus=block===activeBlock?Math.min(.12,c*.08):0;
+     // Prefer clearing the region before leaving; avoid isolated stops left behind.
+     const closePending=remain.filter(j=>j!==i&&distance(i,j)<.35).length;
+     const localBonus=Math.min(.09,closePending*.018);
+     const endBias=end?Math.max(0,haversine(points[i],end)-haversine(points[at],end))*.035:0;
+     return {i,block,score:c-blockBonus-localBonus+endBias,c};
+   });
+   candidates.sort((a,b)=>a.score-b.score||a.c-b.c);
+   let next=candidates[0];
+   // When two choices are almost equal, avoid a road barrier: road duration
+   // is already represented by the matrix. Without it, use distance only.
+   visited.add(next.i);result.push(left[next.i-1]);at=next.i;activeBlock=next.block;
+ }
+ return {planned:result,blocks:blocks.length,usedRoadTimes:!!matrix};
 }
 async function resolveRouteDestination(text){
  const value=String(text||'').trim();if(!value)return null;
@@ -520,8 +538,9 @@ async function optimizeRoute(){
  const endText=mode==='free'?'':(document.getElementById('routePlanEnd')?.value||'').trim();
  let end=null;
  if(endText){toast('Localizando destino final...');try{end=await resolveRouteDestination(endText)}catch(e){alert('Não foi possível localizar o destino final. Confira o endereço e tente novamente, ou deixe o campo vazio.');return}}
- toast('Organizando blocos de entregas para evitar retornos...');
- const {planned}=regionalPlan(start,left,end);
+ toast('Calculando proximidade e regiões pelas ruas...');
+ const matrix=await roadCostMatrix(start,left);
+ const {planned,usedRoadTimes}=regionalPlan(start,left,end,matrix);
  deliveries.forEach(d=>{if(!d.done)d.routeOrder=''});
  planned.forEach((d,i)=>{d.routeOrder=i+1});
  autoNext=null;
@@ -532,7 +551,7 @@ async function optimizeRoute(){
  document.getElementById('routeTab').classList.add('active');document.getElementById('originalTab').classList.remove('active');
  localStorage.setItem('rotapro_region_mode',mode);localStorage.setItem('rotapro_region_end',endText);
  save();openMap();
- toast('Rota por regiões pronta! Lista numerada; escolha de entrega preservada.');
+ toast(usedRoadTimes?'Rota por proximidade e ruas pronta!':'Rota por proximidade geográfica pronta (sem tempos viários).');
 }
 
 function restoreOriginal(){deliveries.forEach(d=>d.routeOrder="");if(manualNext!==null&&deliveries[manualNext]?.done)manualNext=null;sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");save();toast("Ordem original restaurada")}

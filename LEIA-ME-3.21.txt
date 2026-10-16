@@ -1,0 +1,8 @@
+RotaPro 3.21 — Proximidade + regiões
+- Cada próxima entrega prioriza o menor deslocamento a partir da parada anterior.
+- Para até 73 entregas com coordenadas, tenta consultar matriz de duração viária OSRM (sem trânsito em tempo real).
+- Para rotas maiores ou indisponibilidade do serviço, usa proximidade geográfica e bônus moderado por região.
+- Blocos geográficos compactos (sem agrupamento em cadeia que mistura toda a cidade).
+- Mantém Sequence, seleção fixa, escolha manual e destino final opcional.
+- Avenidas e barreiras são avaliadas apenas quando a matriz de ruas está disponível; para rotas grandes ainda não há detecção confiável dessas barreiras.
+- Testar com planilhas reais antes de usar em produção. Não garante rota globalmente ótima.
