@@ -1,0 +1,1 @@
+RotaPro 3.23: Otimizar por Paradas segue a ordem da planilha, agrupando mesmo logradouro e numero independentemente de cliente ou apartamento. Sequence original preservada. Contador de paradas totais, pendentes e concluidas. A parada termina quando todas as encomendas no mesmo numero estao concluidas.
