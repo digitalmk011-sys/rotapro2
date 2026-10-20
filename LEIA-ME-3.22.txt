@@ -1,0 +1,1 @@
+RotaPro 3.22: agrupamento de Sequence pelo logradouro e numero, ignorando nome de cliente depois do numero. Complementos de apartamentos e lojas diferentes permanecem separados.
