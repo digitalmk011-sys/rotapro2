@@ -1,0 +1,5 @@
+RotaPro 3.25 - Recuperação dos controles da 3.23/3.24.
+
+Correção: botão Otimizar por Paradas e contadores estavam ausentes do HTML, apesar de existirem no JavaScript. Restaurados. Atualizada versão do service worker. O modo por paradas mantém a ordem da planilha e agrupa por rua + número, desconsiderando complementos.
+
+Para atualizar no GitHub Pages: envie TODOS os arquivos do ZIP para a raiz do repositório e aguarde o deploy; no celular feche/reabra e atualize a página. Se continuar antiga, limpe apenas o cache do site, sem apagar os dados locais da rota.
