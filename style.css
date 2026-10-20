@@ -708,3 +708,7 @@ body{
 .routePlanCard label{display:block;font-weight:800;color:#123f69;margin:12px 0 6px;font-size:13px}.routePlanCard select,.routePlanCard input{box-sizing:border-box;display:block;width:100%;min-height:49px;border:1px solid #c8dcef;border-radius:13px;padding:10px 13px;background:white;color:#153652;font-size:15px;max-width:100%}.routePlanNote{font-size:12px;color:#60758b;line-height:1.5}.routePlanOptimize{display:block;width:100%;min-height:54px;border:0;border-radius:14px;color:white;background:linear-gradient(115deg,#0876f9,#0649ba);box-shadow:0 6px 0 #073e8b,0 12px 18px #0a63c72e;font-size:15px;font-weight:900;margin:12px 0 7px}
 
 .mapStopBanner{position:absolute;z-index:850;top:92px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(5,22,37,.93);color:#fff;border:1px solid rgba(111,203,255,.45);border-radius:24px;padding:9px 16px;font-weight:700;font-size:13px;box-shadow:0 5px 18px #061c3055;pointer-events:none}.mapStopBanner b{color:#79d7ff;font-size:16px}.stopStatsHome{margin:8px 0 12px;padding:12px 14px;background:linear-gradient(110deg,#e7f4ff,#f4faff);border:1px solid #c8e2fa;border-radius:14px;color:#143c65;font-weight:600}.stopStatsHome b{font-size:20px;color:#0967cb}
+
+/* 3.26: oito botoes padronizados e cores distintas */
+.homeActionGrid .actionStops{background:linear-gradient(145deg,#0fabae,#086478)!important}
+.homeActionGrid .actionManual{background:linear-gradient(145deg,#394ce0,#232c91)!important}

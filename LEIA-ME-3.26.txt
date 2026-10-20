@@ -1,0 +1,1 @@
+RotaPro 3.26: primeira entrega da rota otimizada aparece no painel do mapa; cadastro manual passa a ser o oitavo botao no mesmo grid; otimizar por paradas em turquesa, otimizar rota permanece roxo. Escolha manual continua prioritaria. Cache atualizado.
