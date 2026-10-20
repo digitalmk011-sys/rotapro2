@@ -1,0 +1,1 @@
+RotaPro 3.24: No modo Otimizar por Paradas, agrupa pelo logradouro e numero, ignorando nomes de clientes, condominio, casa, apartamento, bloco e outros complementos. A Sequence original e preservada.

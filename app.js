@@ -154,7 +154,18 @@ function addressKey(d){
  return 'texto:'+clean(normalized);
 }
 function stopAddressKey(d){
- const k=addressKey(d);return k.startsWith('imovel:')?k.split('|').slice(0,2).join('|'):k;
+ // No modo por paradas: somente logradouro e numero do imovel.
+ const raw=String(d?.destinationAddress||d?.address||'').trim();
+ if(!raw)return '';
+ const norm=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[ºª]/g,'').replace(/\b(n(?:umero|um)?\.?|nro\.?)\s*(?=\d)/g,'')
+  .replace(/\s+/g,' ').trim();
+ const streetClean=x=>x.replace(/^(rua|r\.?|avenida|av\.?|travessa|tv\.?|alameda|al\.?|praca|pc\.?|estrada|rodovia|rod\.?)\s+/,'')
+  .replace(/[^a-z0-9]+/g,' ').trim();
+ const m=norm.match(/^(.+?)(?:,\s*|\s+)(\d{1,6}[a-z]?)(?=\s*(?:[,;\-/]|$|casa\b|apto\b|apartamento\b|bloco\b|condominio\b|residencial\b|loja\b|sala\b))/);
+ if(m){const street=streetClean(m[1]);if(street.length>=3)return 'parada:'+street+'|'+m[2]}
+ const k=addressKey(d);
+ return k.startsWith('imovel:')?k.split('|').slice(0,2).join('|'):k;
 }
 function stopGroups(){const m=new Map();deliveries.forEach((d,i)=>{const k=stopAddressKey(d)||'unknown-'+i;if(!m.has(k))m.set(k,{indexes:[]});m.get(k).indexes.push(i)});return [...m.values()]}
 function updateStopCounters(){const groups=stopGroups(),done=groups.filter(g=>g.indexes.every(i=>deliveries[i].done)).length;for(const [id,n] of [['mapStopsTotal',groups.length],['mapStopsPending',groups.length-done],['mapStopsDone',done],['homeStopsTotal',groups.length],['homeStopsPending',groups.length-done]]){const e=document.getElementById(id);if(e)e.textContent=n}}
@@ -167,7 +178,7 @@ function optimizeByStops(){
  document.getElementById('routeTab')?.classList.add('active');document.getElementById('originalTab')?.classList.remove('active');
  save();openMap();toast(groups.length+' paradas para '+deliveries.length+' encomendas, na ordem da planilha.');
 }
-function sameAddress(a,b){const ka=addressKey(a),kb=addressKey(b);return !!(ka&&kb&&ka===kb)}
+function sameAddress(a,b){const byStops=localStorage.getItem('rotapro_optimization_mode')==='stops';const ka=byStops?stopAddressKey(a):addressKey(a),kb=byStops?stopAddressKey(b):addressKey(b);return !!(ka&&kb&&ka===kb)}
 function groupIndexesByAddress(i){const base=deliveries[i];if(!base)return [];return deliveries.map((d,idx)=>sameAddress(base,d)?idx:-1).filter(idx=>idx>=0)}
 function addressGroups(){
  const groups=new Map();
