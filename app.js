@@ -169,57 +169,94 @@ function stopAddressKey(d){
 }
 function stopGroups(){const m=new Map();deliveries.forEach((d,i)=>{const k=stopAddressKey(d)||'unknown-'+i;if(!m.has(k))m.set(k,{indexes:[]});m.get(k).indexes.push(i)});return [...m.values()]}
 function updateStopCounters(){const groups=stopGroups(),done=groups.filter(g=>g.indexes.every(i=>deliveries[i].done)).length;for(const [id,n] of [['mapStopsTotal',groups.length],['mapStopsPending',groups.length-done],['mapStopsDone',done],['homeStopsTotal',groups.length],['homeStopsPending',groups.length-done]]){const e=document.getElementById(id);if(e)e.textContent=n}}
-// Encaixa APENAS paradas sem Stop entre paradas com Stop, sem trocar a ordem original.
-// Custo extra = trajeto anterior -> nova parada -> proxima - trajeto direto.
-function orderMissingStopGroups(known,missing){
- const point=g=>{for(const i of g.indexes){const c=coords(deliveries[i]);if(c)return c}return null};
- const placed=known.slice();
- const unresolved=[];
- const pending=missing.slice();
- // Cada insercao usa o melhor encaixe considerando as paradas ja colocadas.
- while(pending.length){
-  let best=null;
-  for(let m=0;m<pending.length;m++){
-   const pos=point(pending[m]);
-   if(!pos){unresolved.push(pending.splice(m,1)[0]);m--;continue}
-   for(let at=(known.length?1:0);at<=placed.length;at++){
-    const prev=at>0?point(placed[at-1]):null;
-    const next=at<placed.length?point(placed[at]):null;
-    // Na ausencia de GPS, so usamos pontos conhecidos; nao presumimos a origem.
-    const origin=at===0?(currentPosition||lastCompletedCoord):null;
-    const before=prev||origin;
-    if(!before&&!next)continue;
-    let cost=0;
-    if(before&&next)cost=haversine(before,pos)+haversine(pos,next)-haversine(before,next);
-    else if(before)cost=haversine(before,pos);
-    else cost=haversine(pos,next);
-    if(!best||cost<best.cost-1e-8||(Math.abs(cost-best.cost)<1e-8&&at>best.at))best={m,at,cost};
-   }
-  }
-  if(!best){unresolved.push(...pending);break}
-  placed.splice(best.at,0,pending.splice(best.m,1)[0]);
- }
- // Sem coordenadas, nunca colocar arbitrariamente antes da primeira parada.
- return {ordered:[...placed,...unresolved],withoutCoordinates:unresolved.length};
+// RotaPro 3.29: as paradas COM Stop formam a espinha dorsal 1,2,3...
+// As SEM Stop sao distribuidas nos intervalos mais proximos, nunca em bloco proprio.
+function stopPoint(g){for(const i of g.indexes){const c=coords(deliveries[i]);if(c)return c}return null}
+function stopValue(g){
+ const values=g.indexes.map(i=>Number(String(deliveries[i].originalStop??'').trim()))
+  .filter(v=>Number.isInteger(v)&&v>0);
+ return values.length?Math.min(...values):null;
 }
-function optimizeByStops(){
+async function locateMissingStopGroups(groups){
+ // So pesquisa os enderecos sem coordenadas. Respeita intervalo minimo entre pedidos.
+ const cacheKey='rotapro_stop_geocode_v329';
+ let cache={};try{cache=JSON.parse(localStorage.getItem(cacheKey)||'{}')}catch(e){}
+ const unique=groups.filter(g=>!stopPoint(g));
+ let requests=0,found=0;
+ for(const g of unique){
+  const d=deliveries[g.indexes[0]];
+  const address=[d.destinationAddress||d.address,d.city,d.bairro].filter(Boolean).join(', ');
+  const key=stopAddressKey(d);
+  let pos=cache[key];
+  if(!pos&&requests<20&&navigator.onLine){
+   try{
+    if(requests>0)await new Promise(resolve=>setTimeout(resolve,1200));
+    requests++;
+    const u='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q='+encodeURIComponent(address);
+    const response=await fetch(u,{headers:{'Accept':'application/json'}});
+    if(response.ok){const data=await response.json();if(data.length)pos=[Number(data[0].lat),Number(data[0].lon)]}
+   }catch(e){}
+   if(pos)cache[key]=pos;
+  }
+  if(Array.isArray(pos)&&pos.every(Number.isFinite)){
+   for(const i of g.indexes){if(!coords(deliveries[i])){deliveries[i].lat=pos[0];deliveries[i].lon=pos[1]}}
+   found++;
+  }
+ }
+ try{localStorage.setItem(cacheKey,JSON.stringify(cache))}catch(e){}
+ return {found,unlocated:groups.filter(g=>!stopPoint(g)).length};
+}
+function orderMissingStopGroups(known,missing){
+ const ordered=known.slice(),withoutCoords=[];
+ // Primeiro ancora cada parada extra na parada numerada mais proxima.
+ // Assim nao se forma uma sequencia de entregas sem Stop em locais distantes.
+ const anchored=new Map();
+ for(const g of missing){
+  const p=stopPoint(g);
+  if(!p){withoutCoords.push(g);continue}
+  if(!known.length){
+   const a=anchored.get(-1)||[];a.push(g);anchored.set(-1,a);continue;
+  }
+  let nearest=0,dist=Infinity;
+  known.forEach((k,i)=>{const q=stopPoint(k);if(!q)return;const v=haversine(p,q);if(v<dist){dist=v;nearest=i}});
+  const a=anchored.get(nearest)||[];a.push(g);anchored.set(nearest,a);
+ }
+ if(!known.length){
+  const pool=(anchored.get(-1)||[]).slice(),sorted=[];
+  let from=currentPosition||lastCompletedCoord||stopPoint(pool[0]);
+  while(pool.length){let best=0,bestDist=Infinity;pool.forEach((g,i)=>{const q=stopPoint(g);const v=from&&q?haversine(from,q):Infinity;if(v<bestDist){best=i;bestDist=v}});const g=pool.splice(best,1)[0];sorted.push(g);from=stopPoint(g)||from}
+  return {ordered:[...sorted,...withoutCoords],withoutCoordinates:withoutCoords.length};
+ }
+ const result=[];
+ for(let i=0;i<known.length;i++){
+  result.push(known[i]);
+  const pool=(anchored.get(i)||[]).slice();
+  let from=stopPoint(known[i]);
+  while(pool.length){
+   let best=0,bestDist=Infinity;
+   pool.forEach((g,j)=>{const q=stopPoint(g);const v=from&&q?haversine(from,q):Infinity;if(v<bestDist){best=j;bestDist=v}});
+   const g=pool.splice(best,1)[0];result.push(g);from=stopPoint(g)||from;
+  }
+ }
+ return {ordered:[...result,...withoutCoords],withoutCoordinates:withoutCoords.length};
+}
+async function optimizeByStops(){
  if(!deliveries.length){alert('Importe a planilha primeiro.');return}
  const groups=stopGroups();
- // Se alguma encomenda no mesmo imovel tem Stop, todo o grupo herda a parada.
- const hasStop=g=>g.indexes.some(i=>{const v=String(deliveries[i].originalStop??'').trim();return v!==''&&v!=='0'&&v.toLowerCase()!=='nan'});
- const known=groups.filter(hasStop),missing=groups.filter(g=>!hasStop(g));
- // A parada 1 da planilha e a primeira obrigatoria. Mantem a ordem relativa
- // das demais paradas com Stop, independentemente das insercoes sem Stop.
- const stopOneIndex=known.findIndex(g=>g.indexes.some(i=>String(deliveries[i].originalStop??'').trim()==='1'));
- if(stopOneIndex>0)known.unshift(known.splice(stopOneIndex,1)[0]);
+ const known=groups.filter(g=>stopValue(g)!==null).sort((a,b)=>stopValue(a)-stopValue(b));
+ const missing=groups.filter(g=>stopValue(g)===null);
+ // Busca coordenadas apenas para paradas sem Stop, inclusive adicionadas manualmente.
+ if(missing.some(g=>!stopPoint(g))){toast('Localizando endereços sem Stop para encaixar na rota...');await locateMissingStopGroups(missing)}
  const result=orderMissingStopGroups(known,missing);
  result.ordered.forEach((g,n)=>g.indexes.forEach(i=>{deliveries[i].routeOrder=n+1;deliveries[i].correctedStop=n+1}));
- localStorage.setItem('rotapro_optimization_mode','stops');sortMode='route';autoNext=null;persistAutoChoice();
- if(manualNext!==null&&deliveries[manualNext]?.done){manualNext=null;persistManualChoice()}
- if(manualNext===null){const first=firstPlannedPending();selectedDelivery=first?deliveries.indexOf(first):null;if(first){autoNext=selectedDelivery;persistAutoChoice()}}
+ localStorage.setItem('rotapro_optimization_mode','stops');sortMode='route';
+ // Otimizar por Paradas e uma escolha explicita de iniciar pela primeira parada.
+ manualNext=null;persistManualChoice();autoNext=null;persistAutoChoice();
+ const first=firstPlannedPending();selectedDelivery=first?deliveries.indexOf(first):null;
+ if(first){autoNext=selectedDelivery;persistAutoChoice()}
  document.getElementById('routeTab')?.classList.add('active');document.getElementById('originalTab')?.classList.remove('active');
  save();openMap();if(selectedDelivery!==null){selectedGroup=groupIndexesByAddress(selectedDelivery);showDeliveryDetails(selectedDelivery)}
- toast(result.ordered.length+' paradas: '+known.length+' da planilha e '+missing.length+' sem Stop encaixadas por proximidade.'+(result.withoutCoordinates?' '+result.withoutCoordinates+' sem coordenadas no final.':''));
+ toast('Rota por Stop: '+known.length+' paradas numeradas, '+missing.length+' sem Stop encaixadas por proximidade.'+(result.withoutCoordinates?' '+result.withoutCoordinates+' sem localização foram para o final.':''));
 }
 function sameAddress(a,b){const byStops=localStorage.getItem('rotapro_optimization_mode')==='stops';const ka=byStops?stopAddressKey(a):addressKey(a),kb=byStops?stopAddressKey(b):addressKey(b);return !!(ka&&kb&&ka===kb)}
 function groupIndexesByAddress(i){const base=deliveries[i];if(!base)return [];return deliveries.map((d,idx)=>sameAddress(base,d)?idx:-1).filter(idx=>idx>=0)}
@@ -691,7 +728,7 @@ document.getElementById("homeSequenceBtn")?.addEventListener("click",openSequenc
 document.getElementById("homeListBtn")?.addEventListener("click",()=>document.getElementById("list")?.scrollIntoView({behavior:"smooth",block:"start"}));
 document.getElementById("homeManualBtn")?.addEventListener("click",()=>document.getElementById("importSection")?.scrollIntoView({behavior:"smooth",block:"center"}));
 document.getElementById("homeClearBtn")?.addEventListener("click",clearAll);
-document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("optStopsBtn")?.addEventListener("click",optimizeByStops);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=56");updateFollowButton();render();
+document.getElementById("file").addEventListener("change",importFile);document.getElementById("optBtn").addEventListener("click",optimizeRoute);document.getElementById("optStopsBtn")?.addEventListener("click",optimizeByStops);document.getElementById("navOptimize").addEventListener("click",optimizeRoute);document.getElementById("clearRouteBtn").addEventListener("click",restoreOriginal);document.getElementById("locateBtn").addEventListener("click",locate);document.getElementById("followMapBtn")?.addEventListener("click",toggleMapFollow);document.getElementById("mapOptimizeBtn")?.addEventListener("click",optimizeRoute);document.getElementById("openMapBtn").addEventListener("click",openMap);document.getElementById("navMap").addEventListener("click",openMap);document.getElementById("closeMap").addEventListener("click",closeMap);document.getElementById("centerMap").addEventListener("click",()=>{followUser=true;if(currentPosition)map.setView(currentPosition,16,{animate:true});else{let d=nextDelivery(),c=d&&coords(d);if(c)map.setView(c,16)}});document.getElementById("showDone").addEventListener("change",e=>{showDone=e.target.checked;drawMap()});document.getElementById("routeTab").addEventListener("click",()=>{sortMode="route";document.getElementById("routeTab").classList.add("active");document.getElementById("originalTab").classList.remove("active");render()});document.getElementById("originalTab").addEventListener("click",()=>{sortMode="original";document.getElementById("originalTab").classList.add("active");document.getElementById("routeTab").classList.remove("active");render()});document.getElementById("nextNavigate").addEventListener("click",()=>{let d=nextDelivery();if(d)navigate(deliveries.indexOf(d))});document.getElementById("nextDone").addEventListener("click",()=>{let d=nextDelivery();if(d)toggle(deliveries.indexOf(d))});document.getElementById("sequenceBtn").addEventListener("click",openSequenceEditor);document.getElementById("closeSequenceModal").addEventListener("click",closeSequenceEditor);document.getElementById("fillSequencesBtn").addEventListener("click",fillMissingSequences);document.getElementById("saveSequencesBtn").addEventListener("click",saveSequences);document.getElementById("sequenceModal").addEventListener("click",e=>{if(e.target.id==="sequenceModal")closeSequenceEditor()});document.getElementById("closeAddressAlertModal")?.addEventListener("click",closeAddressAlerts);document.getElementById("addressAlertModal")?.addEventListener("click",e=>{if(e.target.id==="addressAlertModal")closeAddressAlerts()});if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=57");updateFollowButton();render();
 
 // RotaPro 2.4 - instalação PWA
 let deferredInstallPrompt=null;

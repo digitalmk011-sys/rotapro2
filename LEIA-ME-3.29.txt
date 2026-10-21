@@ -1,0 +1,2 @@
+RotaPro 3.29 — Stop 1, 2, 3... e entregas sem Stop intercaladas.
+Paradas numeradas mantem ordem crescente de Stop; entregas sem Stop sao associadas ao Stop geograficamente mais proximo e inseridas depois dele, sem alterar os demais. Para entregas sem coordenadas o app tenta consultar geocodificacao online; caso nao encontre, avisa e deixa no fim. Otimizar por Paradas reinicia a selecao na primeira parada pendente.
