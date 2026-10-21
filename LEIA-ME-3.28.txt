@@ -1,0 +1,3 @@
+RotaPro 3.28 — Inicio obrigatorio na parada Stop 1
+
+No modo Otimizar por Paradas, quando existe Stop 1, essa parada fica sempre em primeiro lugar. Entregas sem Stop so sao inseridas depois dela por proximidade geografica. A ordem relativa das demais paradas com Stop permanece como na planilha. O mapa seleciona a primeira entrega otimizada, exceto se houver uma escolha manual ativa.
