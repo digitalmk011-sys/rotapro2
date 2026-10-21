@@ -1,0 +1,3 @@
+RotaPro 3.27 — Paradas sem Stop por proximidade
+
+Otimizar por Paradas preserva a ordem das paradas que possuem Stop na planilha. Grupos sem Stop sao inseridos no ponto de menor desvio geografico entre paradas existentes, sem modificar a ordem relativa das paradas com Stop. Se o mesmo endereco tiver Stop em outra encomenda, o grupo inteiro permanece nessa parada. Enderecos sem coordenadas sao colocados ao final, evitando coloca-los como primeiras entregas. A Sequence original nao muda.

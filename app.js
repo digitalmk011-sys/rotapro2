@@ -169,14 +169,53 @@ function stopAddressKey(d){
 }
 function stopGroups(){const m=new Map();deliveries.forEach((d,i)=>{const k=stopAddressKey(d)||'unknown-'+i;if(!m.has(k))m.set(k,{indexes:[]});m.get(k).indexes.push(i)});return [...m.values()]}
 function updateStopCounters(){const groups=stopGroups(),done=groups.filter(g=>g.indexes.every(i=>deliveries[i].done)).length;for(const [id,n] of [['mapStopsTotal',groups.length],['mapStopsPending',groups.length-done],['mapStopsDone',done],['homeStopsTotal',groups.length],['homeStopsPending',groups.length-done]]){const e=document.getElementById(id);if(e)e.textContent=n}}
+// Encaixa APENAS paradas sem Stop entre paradas com Stop, sem trocar a ordem original.
+// Custo extra = trajeto anterior -> nova parada -> proxima - trajeto direto.
+function orderMissingStopGroups(known,missing){
+ const point=g=>{for(const i of g.indexes){const c=coords(deliveries[i]);if(c)return c}return null};
+ const placed=known.slice();
+ const unresolved=[];
+ const pending=missing.slice();
+ // Cada insercao usa o melhor encaixe considerando as paradas ja colocadas.
+ while(pending.length){
+  let best=null;
+  for(let m=0;m<pending.length;m++){
+   const pos=point(pending[m]);
+   if(!pos){unresolved.push(pending.splice(m,1)[0]);m--;continue}
+   for(let at=0;at<=placed.length;at++){
+    const prev=at>0?point(placed[at-1]):null;
+    const next=at<placed.length?point(placed[at]):null;
+    // Na ausencia de GPS, so usamos pontos conhecidos; nao presumimos a origem.
+    const origin=at===0?(currentPosition||lastCompletedCoord):null;
+    const before=prev||origin;
+    if(!before&&!next)continue;
+    let cost=0;
+    if(before&&next)cost=haversine(before,pos)+haversine(pos,next)-haversine(before,next);
+    else if(before)cost=haversine(before,pos);
+    else cost=haversine(pos,next);
+    if(!best||cost<best.cost-1e-8||(Math.abs(cost-best.cost)<1e-8&&at>best.at))best={m,at,cost};
+   }
+  }
+  if(!best){unresolved.push(...pending);break}
+  placed.splice(best.at,0,pending.splice(best.m,1)[0]);
+ }
+ // Sem coordenadas, nunca colocar arbitrariamente antes da primeira parada.
+ return {ordered:[...placed,...unresolved],withoutCoordinates:unresolved.length};
+}
 function optimizeByStops(){
  if(!deliveries.length){alert('Importe a planilha primeiro.');return}
- const groups=stopGroups();groups.forEach((g,n)=>g.indexes.forEach(i=>{deliveries[i].routeOrder=n+1;deliveries[i].correctedStop=n+1}));
+ const groups=stopGroups();
+ // Se alguma encomenda no mesmo imovel tem Stop, todo o grupo herda a parada.
+ const hasStop=g=>g.indexes.some(i=>{const v=String(deliveries[i].originalStop??'').trim();return v!==''&&v!=='0'&&v.toLowerCase()!=='nan'});
+ const known=groups.filter(hasStop),missing=groups.filter(g=>!hasStop(g));
+ const result=orderMissingStopGroups(known,missing);
+ result.ordered.forEach((g,n)=>g.indexes.forEach(i=>{deliveries[i].routeOrder=n+1;deliveries[i].correctedStop=n+1}));
  localStorage.setItem('rotapro_optimization_mode','stops');sortMode='route';autoNext=null;persistAutoChoice();
  if(manualNext!==null&&deliveries[manualNext]?.done){manualNext=null;persistManualChoice()}
  if(manualNext===null){const first=firstPlannedPending();selectedDelivery=first?deliveries.indexOf(first):null;if(first){autoNext=selectedDelivery;persistAutoChoice()}}
  document.getElementById('routeTab')?.classList.add('active');document.getElementById('originalTab')?.classList.remove('active');
- save();openMap();if(selectedDelivery!==null){selectedGroup=groupIndexesByAddress(selectedDelivery);showDeliveryDetails(selectedDelivery)}toast(groups.length+' paradas para '+deliveries.length+' encomendas, na ordem da planilha.');
+ save();openMap();if(selectedDelivery!==null){selectedGroup=groupIndexesByAddress(selectedDelivery);showDeliveryDetails(selectedDelivery)}
+ toast(result.ordered.length+' paradas: '+known.length+' da planilha e '+missing.length+' sem Stop encaixadas por proximidade.'+(result.withoutCoordinates?' '+result.withoutCoordinates+' sem coordenadas no final.':''));
 }
 function sameAddress(a,b){const byStops=localStorage.getItem('rotapro_optimization_mode')==='stops';const ka=byStops?stopAddressKey(a):addressKey(a),kb=byStops?stopAddressKey(b):addressKey(b);return !!(ka&&kb&&ka===kb)}
 function groupIndexesByAddress(i){const base=deliveries[i];if(!base)return [];return deliveries.map((d,idx)=>sameAddress(base,d)?idx:-1).filter(idx=>idx>=0)}
